@@ -53,6 +53,8 @@ MENTION = re.compile(
     rf"({MODEL_CORE}(?:\s*(?:/|,|&|and|or)\s*(?:(?:FGT|FG|FWF|FortiGate)[\s_-]*)?{MODEL_CORE})*)"
 )
 CORE = re.compile(MODEL_CORE)
+# Fortinet writes a model family with an x for the last digit: 370xF is 3700F and 3701F.
+WILDCARD = re.compile(r"(?<![\w.])(\d{1,3})[xX]([A-Z])(?!\w)")
 SERIES = re.compile(r"\b(?:FortiGate|FGT|FG)[ -]?([67])000[EF]?(?:\s*(?:/|,|and|or)\s*(?:FG-?)?([67])000[EF]?)?")
 SHORT_SERIES = re.compile(r"\b([67])K[EF]?\b")
 VIRTUAL = re.compile(r"\b(?:FortiGate[- ]?VM|FGT[- ]?VM|FG-?VM|FGVM|FOS-?VM)", re.I)
@@ -89,6 +91,8 @@ def hardware_tags(text: str, category: str, known_cores: Iterable[str]) -> Tuple
     cores: Set[str] = set()
     for mention in MENTION.finditer(source):
         cores.update(core for core in CORE.findall(mention.group(1)) if core in known)
+    for digits, letter in WILDCARD.findall(source):
+        cores.update(core for core in known if re.fullmatch(rf"{digits}\d{letter}", core))
 
     families: Set[str] = set()
     for match in SERIES.finditer(source):

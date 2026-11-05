@@ -44,3 +44,15 @@ def test_families_and_asics():
     assert tags("Drops", "FortiGate 6000/7000")[1] == ["6000", "7000"]
     assert tags("Boot failure", "VM")[1] == ["VM"]
     assert tags("Audio cutouts on NP7 models")[2] == ["NP7"]
+
+
+def test_a_family_written_with_an_x_reaches_its_models():
+    known = {"3700F", "3701F", "4800F", "30G", "31G", "300G", "60F"}
+    assert hardware_tags("Interfaces on FortiGate 370xF and 480xF remain down.", "System", known)[0] == [
+        "3700F", "3701F", "4800F"]
+    assert hardware_tags("FGT-3xG family fails to install.", "System", known)[0] == ["30G", "31G"]
+
+
+def test_an_x_elsewhere_is_not_a_model():
+    known = {"20F", "21F", "80F"}
+    assert hardware_tags("802.1x and 2x2 radios, value 0x2F.", "System", known)[0] == []

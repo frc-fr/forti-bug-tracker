@@ -92,6 +92,20 @@ function versionNotes(annotations, version, terms, order) {
     .map((note) => ({ ...note, version: name })));
 }
 
+/** Notices of the target branch up to the target, "fresh" when the current version lacks them. */
+function upgradeNotices(notices, versions, from, to) {
+  if (from >= to) return [];
+  const known = new Set((notices[versions[from].v] || []).map(([, title]) => title && title.toLowerCase()));
+  const found = new Map();
+  versions.slice(from + 1, to + 1).filter((entry) => entry.branch === versions[to].branch).forEach((entry) => {
+    for (const [chapter, title, reference] of notices[entry.v] || []) {
+      const key = title ? `${chapter}|${title.toLowerCase()}` : `${chapter}@${entry.v}`;
+      found.set(key, { chapter, title, reference, version: entry.v, fresh: !title || !known.has(title.toLowerCase()) });
+    }
+  });
+  return [...found.values()];
+}
+
 if (typeof module !== "undefined") {
-  module.exports = { versionNotes, currentRecommendations, modelLifecycles, statusAt, modelFamily, hardwareMatch, searchTerms, matchesTerms, upgradeGroup };
+  module.exports = { upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, statusAt, modelFamily, hardwareMatch, searchTerms, matchesTerms, upgradeGroup };
 }

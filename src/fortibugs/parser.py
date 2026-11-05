@@ -19,6 +19,19 @@ CVE_REFERENCE = re.compile(r"[\s(,;]*\bCVE-\d{4}-\d{4,}\b[)]?", re.I)
 VULNERABILITY_NOTICE = re.compile(r"no longer vulnerable|following CVE", re.I)
 WORKAROUND = re.compile(r"\bWorkaround\s*:\s*", re.I)
 MODEL = re.compile(r"\b(?:FG|FGT|FGR|FWF|FFW|FGVM|FOS|FS)-?[0-9V][0-9A-Za-z]*(?:-[0-9A-Za-z]+)*")
+NOTICE_CHAPTERS = [
+    (r"upgrade information$", "upgrade"),
+    (r"special notices$", "special"),
+    (r"changes in (default behavior|default values|cli defaults)$", "defaults"),
+    (r"changes in cli$", "cli"),
+    (r"changes in gui behavior$", "gui"),
+    (r"changes in table ?size$", "table"),
+]
+OTHER_CHAPTERS = re.compile(
+    r"change log|product integration|resolved issues|known issues|limitations|introduction|built-in|"
+    r"new feature|table of contents|image checksum|firmware image checksums|appendix|supported models|upgrading to",
+    re.I,
+)
 TABLE_CAPTION = re.compile(r"^Table \d+:\s*(?:Resolved |Known )?(.*?)(?: issues?)?(?: \(continued\))?$", re.I)
 SYMBOL_FONTS = ("dingbat", "wingding", "symbol")
 
@@ -64,6 +77,7 @@ class Document:
     observations: List[dict]
     skipped_cve_rows: int
     warnings: List[str]
+    notices: List[list] = field(default_factory=list)
 
 
 def page_lines(page: fitz.Page) -> List[List[Line]]:
@@ -307,6 +321,47 @@ def extract_release_date(doc: fitz.Document) -> Optional[str]:
     return None
 
 
+def chapter_notices(toc: List[tuple]) -> List[list]:
+    """List the [chapter, title, reference] worth reading before an upgrade.
+
+    A chapter without sections keeps a None title: its content is specific to the
+    version. A top-level entry that is no known chapter is a misplaced section.
+    """
+    notices = []
+    current = None
+    for level, title, reference in toc:
+        name = " ".join(title.split())
+        code = next((code for pattern, code in NOTICE_CHAPTERS if re.match(pattern, name, re.I)), None)
+        if level == 1 and code:
+            current = code
+            notices.append([code, None, reference])
+        elif level == 1 and OTHER_CHAPTERS.match(name):
+            current = None
+        elif current and level <= 2:
+            notices.append([current, name, reference])
+    titled = {notice[0] for notice in notices if notice[1]}
+    return [notice for notice in notices if notice[1] or notice[0] not in titled]
+
+
+def full_title(doc: fitz.Document, title: str, page: int) -> str:
+    """Bookmarks cut long titles: the heading on the page has the rest."""
+    prefix = title[:-3].strip()
+    for block in doc[page - 1].get_text("dict")["blocks"]:
+        spans = [span["text"] for line in block.get("lines", []) for span in line["spans"]]
+        text = " ".join(" ".join(spans).split())
+        if text.startswith(prefix):
+            return text
+    return f"{prefix}…"
+
+
+def extract_notices(doc: fitz.Document) -> List[list]:
+    notices = chapter_notices(doc.get_toc())
+    for notice in notices:
+        if notice[1] and notice[1].endswith("..."):
+            notice[1] = full_title(doc, notice[1], notice[2])
+    return notices
+
+
 def title_pattern(title: str) -> str:
     return r"(?m)^\s*" + r"\s+".join(map(re.escape, title.split())) + r"\s*$"
 
@@ -359,4 +414,5 @@ def parse_pdf(path: Path) -> Document:
         observations=observations,
         skipped_cve_rows=skipped,
         warnings=warnings,
+        notices=extract_notices(doc),
     )

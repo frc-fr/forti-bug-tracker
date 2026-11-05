@@ -2,7 +2,7 @@
 import fitz
 import pytest
 
-from fortibugs.parser import clean_category, clean_description, join_lines, parse_pdf
+from fortibugs.parser import chapter_notices, clean_category, clean_description, join_lines, parse_pdf
 
 ID_X, TEXT_X = 62, 137
 
@@ -200,3 +200,18 @@ def test_supported_models_with_wrapped_names_and_sub_headings(tmp_path):
     ])
     doc.save(tmp_path / "n.pdf")
     assert parse_pdf(tmp_path / "n.pdf").models == ["FG-100D", "FG-200D", "FG-200D-POE", "FG-300D", "FWF-60F"]
+
+
+def test_notices_keep_sections_and_version_specific_chapters():
+    toc = [
+        (1, "Change Log", 1),
+        (1, "Upgrade information", 2),
+        (2, "Downgrading", 3),
+        (3, "Too deep", 3),
+        (1, "A misplaced section", 4),
+        (1, "Changes in table size", 5),
+        (1, "Resolved issues", 6),
+        (2, "Firewall", 6),
+    ]
+    assert chapter_notices(toc) == [
+        ["upgrade", "Downgrading", 3], ["upgrade", "A misplaced section", 4], ["table", None, 5]]

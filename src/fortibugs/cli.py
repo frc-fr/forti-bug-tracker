@@ -32,6 +32,7 @@ def main() -> None:
         manifest = collect.update_manifest(args.manifest, client, check_all=args.all)
         downloaded = collect.download_pdfs(manifest, args.cache, client)
         collect.save_manifest(args.manifest, manifest)
+        collect.download_web_notes(manifest, args.cache, client)
         recommended.update_recommended(args.recommended, client)
         logging.info("%d versions, %d PDFs downloaded", len(manifest), len(downloaded))
     elif args.command == "extract":

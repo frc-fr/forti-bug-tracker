@@ -5,8 +5,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
-from .parser import parse_pdf
+from .collect import WEB_SUFFIX
+from .parser import Document, parse_pdf
 from .versions import branch_of, version_key
+from .web_notes import parse_web_notes
 
 log = logging.getLogger(__name__)
 
@@ -23,6 +25,7 @@ def write_version(path: Path, version: str, document) -> None:
         "build": document.build,
         "released": document.released,
         "models": document.models,
+        "notices": document.notices,
     }
     lines = ",\n".join(
         "  " + json.dumps(observation, ensure_ascii=False)
@@ -60,8 +63,21 @@ def write_changes(path: Path, changes: List[dict]) -> None:
     path.write_text(f"[\n{lines}\n]\n", encoding="utf-8")
 
 
+def read_document(cache: Path, version: str) -> Document:
+    pdf = cache / f"{version}.pdf"
+    if pdf.exists():
+        return parse_pdf(pdf)
+    return parse_web_notes(json.loads((cache / f"{version}{WEB_SUFFIX}").read_text(encoding="utf-8")))
+
+
+def cached_versions(cache: Path) -> List[str]:
+    names = {pdf.stem for pdf in cache.glob("*.pdf")}
+    names |= {web.name[:-len(WEB_SUFFIX)] for web in cache.glob(f"*{WEB_SUFFIX}")}
+    return sorted(names, key=version_key)
+
+
 def extract_all(cache: Path, output: Path, changes_path: Path, date: Optional[str] = None) -> Dict[str, List[str]]:
-    """Parse every cached PDF and return the warnings per version.
+    """Parse every cached document and return the warnings per version.
 
     Without a change log the data is a baseline: published versions are recorded
     with their release date, as nothing tells which bugs were added when.
@@ -70,11 +86,14 @@ def extract_all(cache: Path, output: Path, changes_path: Path, date: Optional[st
     output.mkdir(parents=True, exist_ok=True)
     baseline = not changes_path.exists()
     changes = read_changes(changes_path)
-    pdfs = sorted(cache.glob("*.pdf"), key=lambda pdf: version_key(pdf.stem))
     problems = {}
-    for pdf in pdfs:
-        version = pdf.stem
-        document = parse_pdf(pdf)
+    for version in cached_versions(cache):
+        try:
+            document = read_document(cache, version)
+        except ValueError as error:
+            # Only the web fallback raises: its layout may change, the last data stays.
+            log.error("%s: %s", version, error)
+            continue
         target = output / f"{version}.json"
         previous = json.loads(target.read_text(encoding="utf-8")) if target.exists() else None
         if previous is None or baseline:

@@ -11,7 +11,7 @@ informations sont fournies à titre indicatif : vérifiez toujours la documentat
 ## Fonctionnalités
 
 - Recherche par numéro de bug ou mots-clés, par version et par matériel
-- Comparaison de deux versions
+- Comparaison de deux versions, avec les chapitres à lire avant la mise à niveau
 - Informations par modèle, dont la version recommandée
 - Suivi des nouveautés, avec un flux RSS/Atom
 - Interface en français et en anglais

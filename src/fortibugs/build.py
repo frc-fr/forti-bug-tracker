@@ -63,7 +63,8 @@ def build_index(documents: Dict[str, dict], manifest: Dict[str, dict]) -> dict:
                 "build": documents.get(version, {}).get("build"),
                 "released": documents.get(version, {}).get("released"),
                 "revised": revision_date(manifest.get(version, {})),
-                "pdf": manifest.get(version, {}).get("pdf_url"),
+                "pdf": None if manifest.get(version, {}).get("unavailable") else manifest.get(version, {}).get("pdf_url"),
+                "web": bool(manifest.get(version, {}).get("unavailable")) and version in documents,
                 "page": PAGE_URL.format(version=version),
                 "unavailable": version not in documents,
                 "models": [positions[model] for model in models[version]],
@@ -165,7 +166,8 @@ def build_site(
         shutil.rmtree(dist)
     shutil.copytree(sources, dist)
     (dist / "data").mkdir()
-    for name, content in (("index.json", index), ("bugs.json", bugs), ("changes.json", changes)):
+    notices = {version: document.get("notices", []) for version, document in documents.items()}
+    for name, content in (("index.json", index), ("bugs.json", bugs), ("changes.json", changes), ("notices.json", notices)):
         (dist / "data" / name).write_text(
             json.dumps(content, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
         )

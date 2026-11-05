@@ -18,6 +18,7 @@ from typing import Dict, List, Optional, Set
 import requests
 
 from .versions import branch_of, version_key
+from .web_notes import CHAPTERS, chapter_urls
 
 log = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ SEED_VERSION = "7.6.4"
 # Fortinet revises old versions of a live branch, and only those: the age of a
 # version says nothing, the last revision seen in its branch does.
 ACTIVE_DAYS = 90
+WEB_SUFFIX = ".web.json"
 
 VERSION_LINK = re.compile(r"/document/fortigate/(\d+\.\d+\.\d+)/fortios-release-notes")
 PDF_LINK = re.compile(r"https://fortinetweb\.s3\.amazonaws\.com/[^\"'\s<>]+?\.pdf")
@@ -152,6 +154,26 @@ def update_manifest(path: Path, client: Client, check_all: bool = True) -> Dict[
         entry.pop("unavailable", None)
         save_manifest(path, manifest)
     return manifest
+
+
+def download_web_notes(manifest: Dict[str, dict], cache: Path, client: Client) -> None:
+    """Keep the web chapters of the versions without PDF; a failure keeps the last copy."""
+    cache.mkdir(parents=True, exist_ok=True)
+    for version, entry in manifest.items():
+        if not entry.get("unavailable"):
+            continue
+        response = client.request("GET", PAGE_URL.format(version=version))
+        urls = chapter_urls(response.text, version) if response.status_code == 200 else {}
+        if len(urls) < len(CHAPTERS):
+            log.error("%s: web chapters not found", version)
+            continue
+        pages = {name: client.request("GET", DOCS_URL + url) for name, url in urls.items()}
+        if any(page.status_code != 200 for page in pages.values()):
+            log.error("%s: web chapters not reachable", version)
+            continue
+        target = cache / f"{version}{WEB_SUFFIX}"
+        target.write_text(json.dumps({name: page.text for name, page in pages.items()}), encoding="utf-8")
+        log.info("%s: web notes saved", version)
 
 
 def download_pdfs(manifest: Dict[str, dict], cache: Path, client: Client) -> List[str]:

@@ -1,7 +1,7 @@
 // Run with: node --test tests/site/logic.test.js
 const assert = require("node:assert");
 const test = require("node:test");
-const { versionNotes, currentRecommendations, modelLifecycles, statusAt, hardwareMatch, searchTerms, matchesTerms, upgradeGroup } = require("../../site/logic.js");
+const { upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, statusAt, hardwareMatch, searchTerms, matchesTerms, upgradeGroup } = require("../../site/logic.js");
 
 const versions = [
   { v: "7.4.1", branch: "7.4" }, { v: "7.4.2", branch: "7.4" },
@@ -118,4 +118,19 @@ test("version notes: a lasting change also shows on the later versions", () => {
   assert.strictEqual(versionNotes(notes, "8.0.0", [], order).length, 1);
   assert.strictEqual(versionNotes(notes, "7.6.4", [], order).length, 0);
   assert.strictEqual(versionNotes(notes, "", [], order).length, 0);
+});
+
+test("upgrade notices: the target branch only, fresh when the current version lacks them", () => {
+  const list = [{ v: "7.4.1", branch: "7.4" }, { v: "7.4.2", branch: "7.4" }, { v: "7.6.0", branch: "7.6" }, { v: "7.6.1", branch: "7.6" }];
+  const notices = {
+    "7.4.1": [["upgrade", "Common", 1]],
+    "7.4.2": [["upgrade", "Skipped branch", 2]],
+    "7.6.0": [["upgrade", "Common", 3], ["upgrade", "Only here", 4], ["table", null, 5]],
+    "7.6.1": [["upgrade", "common", 6], ["table", null, 7]],
+  };
+  const items = upgradeNotices(notices, list, 0, 3);
+  assert.deepStrictEqual(items.map(({ title, version, fresh }) => [title, version, fresh]), [
+    ["common", "7.6.1", false], ["Only here", "7.6.0", true], [null, "7.6.0", true], [null, "7.6.1", true],
+  ]);
+  assert.deepStrictEqual(upgradeNotices(notices, list, 3, 0), []);
 });

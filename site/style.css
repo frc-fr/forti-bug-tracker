@@ -74,6 +74,12 @@ input:focus-visible, button:focus-visible, summary:focus-visible, a:focus-visibl
 .news h2 a:hover { text-decoration: underline; }
 .news ul { margin: 6px 0 0; padding-left: 18px; font-size: 14px; overflow-wrap: anywhere; }
 
+.reading { margin-top: 12px; padding: 10px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; font-size: 14px; }
+.reading > summary { font-weight: 600; cursor: pointer; }
+.reading p { margin: 6px 0 0; }
+.reading h3 { margin: 10px 0 2px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.reading ul { margin: 0; padding-left: 18px; overflow-wrap: anywhere; }
+.reading details { margin-top: 10px; }
 .hardware-note { grid-column: 1 / -1; margin: 0; font-size: 14px; }
 .results:has(.hardware-table) { overflow-x: auto; }
 .hardware-table { width: 100%; border-collapse: collapse; font-size: 14px; }

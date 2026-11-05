@@ -30,6 +30,7 @@ let recommended = { models: {} };
 let annotations = {};
 let versionAnnotations = {};
 let optionsModel = "";
+let notices = {};
 let updated = "";
 let schedule = null;
 let searchTimer;
@@ -268,7 +269,9 @@ function renderHistory(bug) {
   const lines = [...bug.events].reverse().map(([version, status, page]) => {
     const entry = versions[version];
     const label = KNOWN_LABELS[status];
-    const link = entry.pdf ? `<a href="${escapeHtml(entry.pdf)}#page=${page}" target="_blank" rel="noopener">${t("bug.officialPage", { page })}</a>` : "";
+    const link = entry.pdf
+      ? `<a href="${escapeHtml(entry.pdf)}#page=${page}" target="_blank" rel="noopener">${t("bug.officialPage", { page })}</a>`
+      : `<a href="${escapeHtml(entry.page)}" target="_blank" rel="noopener">${t("version.official")}</a>`;
     return `<dt>${escapeHtml(entry.v)}</dt><dd>${label} · ${link}</dd>`;
   });
   return `<dl class="history">${lines.join("")}</dl>`;
@@ -322,6 +325,9 @@ function renderNotices() {
       notices.push(t("notice.unavailable", { version: versions[index].v }));
     }
   }
+  for (const index of selected) {
+    if (index >= 0 && versions[index].web) notices.push(t("notice.web", { version: versions[index].v }));
+  }
   const version = selected[0];
   if (version >= 0 && state.model && !versions[version].unavailable) {
     const position = models.indexOf(state.model);
@@ -345,9 +351,40 @@ function renderVersionInfo() {
     if (entry.build) parts.push(`build ${escapeHtml(entry.build)}`);
     if (entry.released) parts.push(t("version.released", { date: formatDate(entry.released) }));
     if (entry.revised) parts.push(t("version.revised", { date: formatDate(entry.revised) }));
-    if (entry.pdf) parts.push(`<a href="${escapeHtml(entry.pdf)}" target="_blank" rel="noopener">${t("version.official")}</a>`);
+    parts.push(`<a href="${escapeHtml(entry.pdf || entry.page)}" target="_blank" rel="noopener">${t("version.official")}</a>`);
   }
   $("version-info").innerHTML = parts.join(" · ");
+}
+
+function noticeItem(notice) {
+  const entry = versions.find((candidate) => candidate.v === notice.version);
+  const url = typeof notice.reference === "number" && entry.pdf
+    ? `${entry.pdf}#page=${notice.reference}`
+    : typeof notice.reference === "string" ? `https://docs.fortinet.com${notice.reference}` : entry.page;
+  const label = notice.title || `FortiOS ${notice.version}`;
+  const version = notice.title ? ` <span class="muted">${escapeHtml(notice.version)}</span>` : "";
+  return `<li><a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(label)}</a>${version}</li>`;
+}
+
+function renderUpgradeNotices() {
+  const from = versionIndex(state.from);
+  const to = versionIndex(state.version);
+  const items = state.view === "upgrade" && from >= 0 && to >= 0 ? upgradeNotices(notices, versions, from, to) : [];
+  if (!items.length) {
+    $("upgrade-notices").innerHTML = "";
+    return;
+  }
+  const fresh = items.filter((item) => item.fresh);
+  const chapters = ["upgrade", "special", "defaults", "cli", "gui", "table"].map((chapter) => {
+    const list = fresh.filter((item) => item.chapter === chapter);
+    return list.length ? `<h3>${t(`chapter.${chapter}`)}</h3><ul>${list.map(noticeItem).join("")}</ul>` : "";
+  }).join("");
+  const others = items.filter((item) => !item.fresh);
+  const repeated = others.length
+    ? `<details><summary>${t("reading.repeated", { count: others.length, version: escapeHtml(state.from) })}</summary><ul>${others.map(noticeItem).join("")}</ul></details>`
+    : "";
+  $("upgrade-notices").innerHTML = `<details class="reading" open><summary>${t("reading.title", { count: fresh.length })}</summary>
+    <p class="muted">${t("reading.help", { branch: escapeHtml(versions[to].branch) })}</p>${chapters}${repeated}</details>`;
 }
 
 function renderRecommendation() {
@@ -427,6 +464,7 @@ function renderHardware() {
   $("notices").innerHTML = "";
   $("version-info").innerHTML = "";
   $("recommendation").innerHTML = "";
+  $("upgrade-notices").innerHTML = "";
   $("news-summary").innerHTML = "";
   writeHash();
 }
@@ -458,6 +496,7 @@ function renderNews() {
   $("notices").innerHTML = "";
   $("version-info").innerHTML = "";
   $("recommendation").innerHTML = "";
+  $("upgrade-notices").innerHTML = "";
   writeHash();
 }
 
@@ -477,6 +516,7 @@ function render() {
   renderNotices();
   renderVersionInfo();
   renderRecommendation();
+  renderUpgradeNotices();
 
   const waiting = state.view === "upgrade" && (!state.from || !state.version);
   $("count").textContent = waiting
@@ -624,8 +664,8 @@ function localizedNotes(annotations) {
 }
 
 async function start() {
-  const [index, data, news] = await Promise.all(
-    ["data/index.json", "data/bugs.json", "data/changes.json"].map((url) => fetch(url).then((response) => {
+  const [index, data, news, chapters] = await Promise.all(
+    ["data/index.json", "data/bugs.json", "data/changes.json", "data/notices.json"].map((url) => fetch(url).then((response) => {
       if (!response.ok) throw new Error(`${url}: ${response.status}`);
       return response.json();
     })),
@@ -634,6 +674,7 @@ async function start() {
   models = index.models;
   categories = data.categories;
   changes = news;
+  notices = chapters;
   updated = index.updated;
   schedule = index.schedule;
   recommended = index.recommended;

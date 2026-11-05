@@ -19,7 +19,7 @@
   {"bug_id": "451776", "status": "known", "category": "GUI", "description": "Admin GUI has limit of 10 characters for OTP.", "workaround": null, "page": 22},
   {"bug_id": "481943", "status": "known", "category": "HA", "description": "Green checkmarks indicating HA sync status on GUI only appear beside virtual cluster 1.", "workaround": null, "page": 22},
   {"bug_id": "539155", "status": "known", "category": "HA", "description": "HA master does not send SNMP trap when plugging cable into interface that is set as ha-mgmt-interfaces.", "workaround": null, "page": 22},
-  {"bug_id": "412649", "status": "known", "category": "Log &Report", "description": "In NGFW Policy mode, FortiGate does not create webfilter logs.", "workaround": null, "page": 22},
+  {"bug_id": "412649", "status": "known", "category": "Log & Report", "description": "In NGFW Policy mode, FortiGate does not create webfilter logs.", "workaround": null, "page": 22},
   {"bug_id": "403229", "status": "known", "category": "Security Fabric", "description": "In FortiView display from FortiAnalyzer, the upstream FortiGate cannot drill down to final level for downstream traffic.", "workaround": null, "page": 22},
   {"bug_id": "411368", "status": "known", "category": "Security Fabric", "description": "In FortiView with FortiAnalyzer, the combined MAC address is displayed in the Device field.", "workaround": null, "page": 22},
   {"bug_id": "405239", "status": "known", "category": "SSL VPN", "description": "URL rewritten incorrectly for a specific page in application server.", "workaround": null, "page": 23},

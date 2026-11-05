@@ -24,7 +24,7 @@
   {"bug_id": "357360", "status": "known", "category": "Switch Controller", "description": "DHCP snooping may not work on IPv6.", "workaround": null, "page": 22},
   {"bug_id": "528983", "status": "known", "category": "Switch Controller", "description": "When IGMP snooping is enabled on a VLAN, reserved multicast packets are forwarded twice on the 124D, 224D-FPOE, 248D, 424D, 424D-POE, 424D-FPOE, 448D, 448DPOE, 448D-FPOE, 224E, 224E-POE, 248E-POE, 248E-FPOE models.", "workaround": null, "page": 22},
   {"bug_id": "295292", "status": "known", "category": "System", "description": "If private-data-encryption is enabled, when restoring config to a FortiGate, the FortiGate may not prompt the user to enter the key.", "workaround": null, "page": 23},
-  {"bug_id": "472843", "status": "known", "category": "System", "description": "When FortiManager is set for DM=setverify-install-disable, FortiGate does not always save script changes.", "workaround": null, "page": 23},
+  {"bug_id": "472843", "status": "known", "category": "System", "description": "When FortiManager is set for DM = set verify-install-disable, FortiGate does not always save script changes.", "workaround": null, "page": 23},
   {"bug_id": "474132", "status": "known", "category": "System", "description": "FG-51E hang under stress test since build 0050.", "workaround": null, "page": 23},
   {"bug_id": "470575", "status": "known", "category": "Upgrade", "description": "After upgrading from 5.6.3, g-sniffer-profile and sniffer-profile exist for IPS and web filter.", "workaround": null, "page": 23},
   {"bug_id": "473075", "status": "known", "category": "Upgrade", "description": "When upgrading, multicast policies are lost when there is a zone member as interface.", "workaround": null, "page": 23},

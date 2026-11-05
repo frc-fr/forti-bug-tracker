@@ -1,0 +1,714 @@
+{
+  "source": "https://community.fortinet.com/fortigate-3/recommended-release-for-fortios-116639",
+  "as_of": "2026-10",
+  "entries": [
+    {
+      "segment": "Low End",
+      "product": "FortiGateRugged-35D",
+      "release": "6.2.17",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-30E",
+      "release": "6.2.17",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiWiFi-30E",
+      "release": "6.2.17",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-30G",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-31G",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiWiFi-30G",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-40F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiWiFi-40F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-40F-3G4G",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiWiFi-40F-3G4G",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-50E",
+      "release": "6.2.17",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiWiFi-50E",
+      "release": "6.2.17",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-51E",
+      "release": "6.2.17",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiWiFi-51E",
+      "release": "6.2.17",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-52E",
+      "release": "6.2.17",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-50G/51G and variants",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiWiFi-50G/51G and variants",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-60E",
+      "release": "7.4.13",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiWifi-60E",
+      "release": "7.4.13",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-60F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiWiFi-60F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-61F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiWiFi-61F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGateRugged-60F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGateRugged-60F-3G4G",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-70F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-71F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGateRugged-70F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGateRugged-70F-3G4G",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-70G/71G and variants",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiWiFi-70G/71G and variants",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-80E",
+      "release": "7.4.13",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-81E",
+      "release": "7.4.13",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-80F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-81F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-90E",
+      "release": "7.4.13",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-90G",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-91G",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Low End",
+      "product": "FortiGate-98D-POE",
+      "release": "6.0.18",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-100E",
+      "release": "7.2.14",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-101E",
+      "release": "7.2.14",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-100F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-101F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-120G",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-121G",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-140E",
+      "release": "7.4.13",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-200E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-200F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-201E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-201F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-200G/201G",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-240D",
+      "release": "6.0.18",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-280D",
+      "release": "6.0.18",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-300E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-301E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-400E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-400E-BYPASS",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-401E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-400F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-401F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-500E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-501E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-600E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-600F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-601E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-601F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-700G",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-701G",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-800D",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-900D",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-900G",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Mid Range",
+      "product": "FortiGate-901G",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-1000D",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-1000F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-1001F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-1100E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-1101E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-1200D",
+      "release": "7.0.19",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-1500D",
+      "release": "7.2.14",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-1500DT",
+      "release": "7.2.14",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-1800F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-1801F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-2000E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-2200E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-2201E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-2500E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-2600F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-2601F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3000D",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3000F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3001F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3100D",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3200D",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3200F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3201F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3300E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3301E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3400E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3401E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3500F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3501F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3600E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3601E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3700D",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3700F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3701F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3800D",
+      "release": "7.0.19",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3960E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-3980E",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-4200F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-4201F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-4400F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-4401F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-4800F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-4801F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "High End",
+      "product": "FortiGate-5001D",
+      "release": "6.4.16",
+      "engineering_support_ended": true
+    },
+    {
+      "segment": "Chassis Based FortiGate",
+      "product": "FortiGate-6000F / 7000E / 7000F",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    },
+    {
+      "segment": "Virtual Machines",
+      "product": "FortiGate-VM64 -all versions",
+      "release": "7.6.8",
+      "engineering_support_ended": false
+    }
+  ]
+}

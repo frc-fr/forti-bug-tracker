@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FortiOS Bug Tracker</title>
+  <meta name="description" content="Recherche des bugs FortiOS et de leurs corrections par version et par matériel.">
+  <script>
+    document.documentElement.dataset.theme = localStorage.getItem("theme")
+      || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  </script>
+  <link rel="stylesheet" href="style.css">
+  <link rel="alternate" type="application/atom+xml" title="FortiOS Bug Tracker : quoi de neuf" href="feed.xml">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-row">
+      <div>
+        <h1>FortiOS Bug Tracker</h1>
+        <p id="scope">Bugs et correctifs de toutes les versions FortiOS</p>
+        <p id="stats" class="muted">Chargement des données…</p>
+      </div>
+      <button type="button" id="theme" class="theme"></button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <nav class="tabs" aria-label="Vues">
+      <button type="button" id="tab-bugs" class="tab" aria-pressed="true">Rechercher un bug</button>
+      <button type="button" id="tab-upgrade" class="tab" aria-pressed="false">Comparer deux versions</button>
+      <button type="button" id="tab-news" class="tab" aria-pressed="false">Quoi de neuf</button>
+      <button type="button" id="tab-hardware" class="tab" aria-pressed="false">Matériel</button>
+    </nav>
+    <p id="view-help" class="view-help muted"></p>
+    <p id="subscribe" class="view-help" hidden><a href="feed.xml">S'abonner au flux RSS/Atom</a></p>
+
+    <section id="filters" class="filters" aria-label="Filtres">
+      <label class="field wide">
+        <span>Bug ou mots-clés</span>
+        <input id="query" type="search" autocomplete="off" spellcheck="false" placeholder="1306049 ou Rekey, IPsec">
+      </label>
+      <div class="field" id="field-from" hidden>
+        <label for="from-input">Version actuelle</label>
+        <div class="combo" id="from"></div>
+      </div>
+      <div class="field">
+        <label for="version-input" id="version-label">Version FortiOS</label>
+        <div class="combo" id="version"></div>
+      </div>
+      <div class="field">
+        <label for="model-input">Matériel</label>
+        <div class="combo" id="model"></div>
+      </div>
+      <div class="field">
+        <label for="category-input">Catégorie</label>
+        <div class="combo" id="category"></div>
+      </div>
+      <button type="button" id="reset" class="reset">Réinitialiser</button>
+    </section>
+
+    <div id="news-summary" class="news-summary"></div>
+    <section id="hardware-tools" class="filters" aria-label="Filtres matériel" hidden>
+      <label class="field wide">
+        <span>Modèle</span>
+        <input id="hardware-query" type="search" autocomplete="off" spellcheck="false" placeholder="Nom du modèle">
+      </label>
+      <p class="muted hardware-note">Les versions et le statut FortiOS sont déduits des listes de modèles supportés des Release Notes. Ce ne sont pas les dates End of Life ou End of Sale, que Fortinet ne publie pas dans ces documents : consultez le <a href="https://support.fortinet.com/support/#/lifecycle" target="_blank" rel="noopener">portail Fortinet</a> (compte requis).</p>
+      <p id="recommended-note" class="muted hardware-note"></p>
+    </section>
+    <p id="version-info" class="version-info muted"></p>
+    <p id="recommendation" class="version-info"></p>
+    <div id="notices"></div>
+    <div id="chips" class="chips" role="group" aria-label="Filtrer par statut"></div>
+
+    <details id="legend" class="legend">
+      <summary>Comment lire les statuts</summary>
+      <dl>
+        <dt><span class="badge affected">Affecté</span></dt>
+        <dd>Le bug est listé dans les Known issues de cette version.</dd>
+        <dt><span class="badge fixed">Corrigé</span></dt>
+        <dd>Le correctif est dans cette version ou une version antérieure de la même branche.</dd>
+        <dt><span class="badge potential">Potentiellement affecté</span></dt>
+        <dd>Le bug est corrigé ou déjà présent plus tard sur cette branche. Fortinet ne publie pas la version d'introduction : cette version peut ne pas être touchée.</dd>
+        <dt><span class="badge unknown">Inconnu</span></dt>
+        <dd>Les notes ne permettent pas de conclure pour cette version, par exemple quand le bug n'est signalé comme nouveau que dans une version plus récente.</dd>
+      </dl>
+      <p class="muted">Une mention de matériel signifie que les notes le citent, pas que seul ce matériel est touché. La plupart des bugs n'en citent aucun : ils restent affichés comme génériques. Un ASIC (NP7, SoC4…) est indiqué à titre d'information, à vérifier pour votre modèle.</p>
+    </details>
+
+    <p id="count" class="count" aria-live="polite"></p>
+    <div id="results" class="results"></div>
+    <button type="button" id="more" class="more" hidden>Afficher plus</button>
+  </main>
+
+  <footer class="wrap muted">
+    <p>Données extraites des Release Notes publiques de FortiOS et de l'article Fortinet sur les versions recommandées. Site indépendant, non affilié à Fortinet et non approuvé par Fortinet. Vérifiez toujours dans la note officielle, accessible depuis chaque bug.</p>
+    <p>Outil créé et maintenu par <a href="https://fr-consulting.fr">FR Consulting</a> · <a href="mailto:contact@fr-consulting.fr">contact@fr-consulting.fr</a> · <a href="mentions-legales.html">Mentions légales</a></p>
+  </footer>
+  <script src="logic.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

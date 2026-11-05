@@ -1,0 +1,28 @@
+{
+  "bugs": {
+    "1353422": [
+      {
+        "label": "Special build 8768",
+        "text": "Fortinet a publié le special build 8768 pour ce bug : les ports GE SFP 17 à 20 ne transmettent plus le trafic en 7.6.8. Il s'obtient auprès du support Fortinet, qui valide d'abord que le problème s'applique à l'équipement. Pour rester en 7.6.8 build 3744, déplacer si possible les connexions sur les ports 21 à 24.",
+        "url": "https://community.fortinet.com/fortigate-3/1gbe-sfp-ports-may-fail-to-forward-traffic-on-fortigate-1800f-1801f-after-upgrading-to-fortios-version-7-6-8-230759"
+      }
+    ]
+  },
+  "versions": {
+    "7.6.5": [
+      {
+        "label": "Groupes DH IPsec par défaut modifiés",
+        "text": "Changement de comportement, pas un bug. Depuis 7.6.5, les nouvelles configurations IPsec utilisent par défaut les groupes DH 20 et 21 au lieu de 14 et 5, en phase 1 comme en phase 2. À la mise à niveau, une configuration sur l'ancien défaut 14 5 passe à 20 21 14, et les valeurs configurées explicitement sont conservées. Vérifier avant et après la mise à niveau que les deux extrémités ont au moins un groupe commun, en phase 1 et, si PFS est activé, en phase 2.",
+        "url": "https://community.fortinet.com/fortigate-3/understanding-ipsec-dh-group-compatibility-and-default-changes-in-fortios-7-6-5-231082",
+        "and_later": true
+      }
+    ],
+    "7.6.8": [
+      {
+        "label": "Interface web indisponible en Security Fabric",
+        "text": "Après le passage en 7.6.8, l'interface d'administration peut devenir indisponible : le FortiGate répond par des TCP reset aux requêtes HTTPS. Cela arrive quand un FortiGate leaf en 7.6.8 appartient à une Security Fabric dont le root est en 7.4.x. Mettre le root à la même version que le leaf, ou appliquer le contournement : config automation setting, set fabric-sync disable, end. L'article annonce un périmètre « 7.6.6 and above » et ne donne pas de numéro de bug.",
+        "url": "https://community.fortinet.com/fortigate-3/after-upgrading-to-fortios-7-6-8-gui-https-stops-working-231092"
+      }
+    ]
+  }
+}

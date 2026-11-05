@@ -106,6 +106,11 @@ function upgradeNotices(notices, versions, from, to) {
   return [...found.values()];
 }
 
+/** Tab-separated text, which spreadsheets and mail clients paste as a table. */
+function tableText(rows) {
+  return rows.map((row) => row.map((cell) => String(cell ?? "").replace(/\s+/g, " ").trim()).join("\t")).join("\n");
+}
+
 if (typeof module !== "undefined") {
-  module.exports = { upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, statusAt, modelFamily, hardwareMatch, searchTerms, matchesTerms, upgradeGroup };
+  module.exports = { tableText, upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, statusAt, modelFamily, hardwareMatch, searchTerms, matchesTerms, upgradeGroup };
 }

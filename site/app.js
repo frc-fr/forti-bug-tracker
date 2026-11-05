@@ -8,16 +8,18 @@ const STATUSES = {
   fixed: t("status.fixed"),
   unknown: t("status.unknown"),
 };
+// Riskiest first: what an upgrade brings or leaves matters more than what it fixes.
 const UPGRADE_GROUPS = {
-  gained: t("group.gained"),
-  introduced: t("group.introduced"),
-  remaining: t("group.remaining"),
+  all: { label: t("group.all"), tone: "all" },
+  introduced: { label: t("group.introduced"), tone: "affected" },
+  remaining: { label: t("group.remaining"), tone: "potential" },
+  gained: { label: t("group.gained"), tone: "fixed" },
 };
 
 const $ = (id) => document.getElementById(id);
 const defaultFilters = () => ({
   query: "", version: "", from: "", model: "", category: "",
-  hidden: new Set(["unknown"]), group: "gained",
+  hidden: new Set(["unknown"]), group: "all",
 });
 const state = { view: "bugs", shown: PAGE_SIZE, hardware: "all", ...defaultFilters() };
 let versions = [];
@@ -31,6 +33,7 @@ let annotations = {};
 let versionAnnotations = {};
 let optionsModel = "";
 let notices = {};
+let copiedTable = () => [];
 let updated = "";
 let schedule = null;
 let searchTimer;
@@ -213,14 +216,19 @@ function compute() {
       const group = upgradeGroup(bug, from, version, versions);
       if (!group) continue;
       counts[group] = (counts[group] || 0) + 1;
-      if (group !== state.group) continue;
+      counts.all = (counts.all || 0) + 1;
+      if (state.group !== "all" && group !== state.group) continue;
+      rows.push({ bug, status, hardware, group });
+      continue;
     } else if (status) {
       counts[status.key] = (counts[status.key] || 0) + 1;
       if (state.hidden.has(status.key)) continue;
     }
     rows.push({ bug, status, hardware });
   }
-  if (state.model) rows.sort((a, b) => (a.hardware === "cited" ? 0 : 1) - (b.hardware === "cited" ? 0 : 1));
+  const risk = Object.keys(UPGRADE_GROUPS);
+  const cited = (row) => (row.hardware === "cited" ? 0 : 1);
+  rows.sort((a, b) => risk.indexOf(a.group) - risk.indexOf(b.group) || (state.model ? cited(a) - cited(b) : 0));
   return { rows, counts };
 }
 
@@ -272,7 +280,7 @@ function renderHistory(bug) {
     const link = entry.pdf
       ? `<a href="${escapeHtml(entry.pdf)}#page=${page}" target="_blank" rel="noopener">${t("bug.officialPage", { page })}</a>`
       : `<a href="${escapeHtml(entry.page)}" target="_blank" rel="noopener">${t("version.official")}</a>`;
-    return `<dt>${escapeHtml(entry.v)}</dt><dd>${label} · ${link}</dd>`;
+    return `<dt>${escapeHtml(entry.v)}</dt><dd>${label}, ${link}</dd>`;
   });
   return `<dl class="history">${lines.join("")}</dl>`;
 }
@@ -286,10 +294,12 @@ function statusDetail(detail) {
   return detail ? `<span>${escapeHtml(t(`detail.${detail.id}`, detail))}</span>` : "";
 }
 
-function renderBug({ bug, status, hardware }, terms) {
-  const badge = status
-    ? `<span class="badge ${status.key}">${STATUSES[status.key]}</span>${statusDetail(status.detail)}`
-    : "";
+function renderBug({ bug, status, hardware, group }, terms) {
+  const badge = group
+    ? `<span class="badge ${UPGRADE_GROUPS[group].tone}">${UPGRADE_GROUPS[group].label}</span>`
+    : status
+      ? `<span class="badge ${status.key}">${STATUSES[status.key]}</span>${statusDetail(status.detail)}`
+      : "";
   const workaround = bug.workaround
     ? `<h3>${t("bug.workaround")}</h3><p>${highlight(bug.workaround, terms)}</p>`
     : "";
@@ -303,17 +313,21 @@ function renderBug({ bug, status, hardware }, terms) {
   </details>`;
 }
 
+function tile(data, key, label, tone, count, pressed) {
+  return `<button type="button" class="summary-card ${tone}" data-${data}="${key}" aria-pressed="${pressed}"><strong>${formatNumber(count || 0)}</strong><span>${label}</span></button>`;
+}
+
 function renderChips(counts) {
   const version = versionIndex(state.version);
-  const chips = $("chips");
   if (state.view === "upgrade") {
-    chips.innerHTML = Object.entries(UPGRADE_GROUPS).map(([key, label]) =>
-      `<button type="button" class="chip" data-group="${key}" aria-pressed="${state.group === key}">${label} (${formatNumber(counts[key] || 0)})</button>`).join("");
+    const compared = version >= 0 && versionIndex(state.from) >= 0;
+    $("chips").innerHTML = compared
+      ? Object.entries(UPGRADE_GROUPS).map(([key, { label, tone }]) => tile("group", key, label, tone, counts[key], state.group === key)).join("")
+      : "";
   } else if (version >= 0) {
-    chips.innerHTML = Object.entries(STATUSES).map(([key, label]) =>
-      `<button type="button" class="chip" data-status="${key}" aria-pressed="${!state.hidden.has(key)}">${label} (${formatNumber(counts[key] || 0)})</button>`).join("");
+    $("chips").innerHTML = Object.entries(STATUSES).map(([key, label]) => tile("status", key, label, key, counts[key], !state.hidden.has(key))).join("");
   } else {
-    chips.innerHTML = "";
+    $("chips").innerHTML = "";
   }
 }
 
@@ -339,7 +353,7 @@ function renderNotices() {
     notices.push(t("notice.order"));
   }
   const articles = versionNotes(versionAnnotations, state.version, searchTerms(state.query), versions.map((entry) => entry.v)).map((note) =>
-    `<p class="notice"><strong>${escapeHtml(t("notice.article", note))}</strong> ${escapeHtml(note.text)} <a href="${escapeHtml(note.url)}" target="_blank" rel="noopener">${t("bug.article")}</a></p>`);
+    `<details class="notice"><summary>${escapeHtml(t("notice.article", note))}</summary><p>${escapeHtml(note.text)} <a href="${escapeHtml(note.url)}" target="_blank" rel="noopener">${t("bug.article")}</a></p></details>`);
   $("notices").innerHTML = notices.map((text) => `<p class="notice">${escapeHtml(text)}</p>`).join("") + articles.join("");
 }
 
@@ -353,7 +367,7 @@ function renderVersionInfo() {
     if (entry.revised) parts.push(t("version.revised", { date: formatDate(entry.revised) }));
     parts.push(`<a href="${escapeHtml(entry.pdf || entry.page)}" target="_blank" rel="noopener">${t("version.official")}</a>`);
   }
-  $("version-info").innerHTML = parts.join(" · ");
+  $("version-info").innerHTML = parts.map((part) => `<span>${part}</span>`).join("");
 }
 
 function noticeItem(notice) {
@@ -377,14 +391,14 @@ function renderUpgradeNotices() {
   const fresh = items.filter((item) => item.fresh);
   const chapters = ["upgrade", "special", "defaults", "cli", "gui", "table"].map((chapter) => {
     const list = fresh.filter((item) => item.chapter === chapter);
-    return list.length ? `<h3>${t(`chapter.${chapter}`)}</h3><ul>${list.map(noticeItem).join("")}</ul>` : "";
+    return list.length ? `<section><h3>${t(`chapter.${chapter}`)}</h3><ul>${list.map(noticeItem).join("")}</ul></section>` : "";
   }).join("");
   const others = items.filter((item) => !item.fresh);
   const repeated = others.length
     ? `<details><summary>${t("reading.repeated", { count: others.length, version: escapeHtml(state.from) })}</summary><ul>${others.map(noticeItem).join("")}</ul></details>`
     : "";
   $("upgrade-notices").innerHTML = `<details class="reading" open><summary>${t("reading.title", { count: fresh.length })}</summary>
-    <p class="muted">${t("reading.help", { branch: escapeHtml(versions[to].branch) })}</p>${chapters}${repeated}</details>`;
+    <p class="muted">${t("reading.help", { branch: escapeHtml(versions[to].branch) })}</p><div class="reading-chapters">${chapters}</div>${repeated}</details>`;
 }
 
 function renderRecommendation() {
@@ -401,7 +415,7 @@ function renderRecommendation() {
   }
   if (entry.ended) parts.push(t("advice.ended"));
   parts.push(`<a href="${escapeHtml(recommended.source)}" target="_blank" rel="noopener">${t("advice.source", { month: formatMonth(recommended.as_of) })}</a>`);
-  $("recommendation").innerHTML = parts.join(" · ");
+  $("recommendation").innerHTML = parts.map((part) => `<span>${part}</span>`).join("");
 }
 
 /** Versions holding the most recent value of a date field, newest version first. */
@@ -424,7 +438,46 @@ function latestCard(title, field) {
 function pdfLine(version) {
   const entry = versions.find((candidate) => candidate.v === version);
   if (!entry || !entry.pdf || !entry.revised) return "";
-  return `<p class="news-pdf">${t("news.revised", { date: formatDate(entry.revised) })} · <a href="${escapeHtml(entry.pdf)}" target="_blank" rel="noopener">${t("version.official")}</a></p>`;
+  return `<p class="news-pdf version-info"><span>${t("news.revised", { date: formatDate(entry.revised) })}</span> <a href="${escapeHtml(entry.pdf)}" target="_blank" rel="noopener">${t("version.official")}</a></p>`;
+}
+
+function bugTable(rows) {
+  const header = ["copy.bug", "copy.status", "copy.category", "copy.description", "copy.workaround", "copy.fix"].map((key) => t(key));
+  return [header, ...rows.map(({ bug, status, group }) => [
+    bug.id,
+    group ? UPGRADE_GROUPS[group].label : status ? STATUSES[status.key] : "",
+    categories[bug.category],
+    bug.description,
+    bug.workaround,
+    fixesLabel(bug),
+  ])];
+}
+
+function hardwareTable(entries) {
+  const header = ["model", "first", "last", "status", "release", "support"].map((key) => t(`hardware.${key}`));
+  return [header, ...entries.map((entry) => {
+    const advice = recommended.models[entry.model];
+    return [
+      entry.model, entry.first, entry.last,
+      entry.current ? t("hardware.current") : t("hardware.stoppedAfter", { branch: entry.branch }),
+      advice ? advice.release : "",
+      advice ? t(advice.ended ? "hardware.ended" : "hardware.ongoing") : "",
+    ];
+  })];
+}
+
+/** The Clipboard API needs HTTPS: a local preview over HTTP falls back on the old command. */
+async function copyText(text) {
+  if (navigator.clipboard) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const field = document.createElement("textarea");
+  field.value = text;
+  document.body.append(field);
+  field.select();
+  document.execCommand("copy");
+  field.remove();
 }
 
 function renderHardware() {
@@ -435,13 +488,21 @@ function renderHardware() {
     current: matching.filter((entry) => entry.current).length,
     stopped: matching.filter((entry) => !entry.current).length,
   };
-  const labels = { all: t("hardware.all"), current: t("hardware.current"), stopped: t("hardware.stopped") };
-  $("chips").innerHTML = Object.entries(labels).map(([key, label]) =>
-    `<button type="button" class="chip" data-hardware="${key}" aria-pressed="${state.hardware === key}">${label} (${formatNumber(counts[key])})</button>`).join("");
+  const labels = {
+    all: [t("hardware.all"), "all"],
+    current: [t("hardware.current"), "fixed"],
+    stopped: [t("hardware.stopped"), "potential"],
+  };
+  $("chips").innerHTML = Object.entries(labels)
+    .map(([key, [label, tone]]) => tile("hardware", key, label, tone, counts[key], state.hardware === key)).join("");
 
-  const rows = matching
+  const listed = matching
     .filter((entry) => state.hardware === "all" || entry.current === (state.hardware === "current"))
-    .sort((a, b) => a.model.localeCompare(b.model, "fr", { numeric: true }))
+    .sort((a, b) => a.model.localeCompare(b.model, "fr", { numeric: true }));
+  copiedTable = () => hardwareTable(listed);
+  $("copy").hidden = !listed.length;
+  $("copy").textContent = t("list.copy");
+  const rows = listed
     .map((entry) => {
       const badge = entry.current
         ? `<span class="badge fixed">${t("hardware.current")}</span>`
@@ -492,6 +553,7 @@ function renderNews() {
   $("results").innerHTML = entries.join("");
   $("count").textContent = "";
   $("more").hidden = true;
+  $("copy").hidden = true;
   $("chips").innerHTML = "";
   $("notices").innerHTML = "";
   $("version-info").innerHTML = "";
@@ -521,9 +583,14 @@ function render() {
   const waiting = state.view === "upgrade" && (!state.from || !state.version);
   $("count").textContent = waiting
     ? t("count.choose")
-    : rows.length > 1 ? t("count.many", { count: formatNumber(rows.length) }) : t(rows.length ? "count.one" : "count.none");
+    : rows.length > state.shown ? t("count.partial", { count: formatNumber(rows.length), shown: formatNumber(state.shown) })
+      : rows.length > 1 ? t("count.many", { count: formatNumber(rows.length) }) : t(rows.length ? "count.one" : "count.none");
   $("results").innerHTML = rows.slice(0, state.shown).map((row) => renderBug(row, terms)).join("");
   $("more").hidden = rows.length <= state.shown;
+  $("more").textContent = t("list.more", { count: formatNumber(rows.length - state.shown) });
+  copiedTable = () => bugTable(rows);
+  $("copy").hidden = !rows.length;
+  $("copy").textContent = t("list.copy");
   writeHash();
 }
 
@@ -635,7 +702,7 @@ function bindEvents() {
   $("tab-hardware").addEventListener("click", () => update({ view: "hardware" }));
   $("hardware-query").addEventListener("input", () => render());
   $("more").addEventListener("click", () => {
-    state.shown += PAGE_SIZE;
+    state.shown = Infinity;
     render();
   });
   $("chips").addEventListener("click", (event) => {
@@ -650,6 +717,19 @@ function bindEvents() {
       if (state.hidden.has(key)) state.hidden.delete(key); else state.hidden.add(key);
       update({});
     }
+  });
+  $("copy").addEventListener("click", async () => {
+    const table = copiedTable();
+    await copyText(tableText(table));
+    $("copy").textContent = t("list.copied", { count: formatNumber(table.length - 1) });
+  });
+  $("to-top").addEventListener("click", () => window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }));
+  window.addEventListener("scroll", () => {
+    $("to-top").hidden = window.scrollY < 500;
+  }, { passive: true });
+  // Selecting text in a bug must not fold or unfold it.
+  $("results").addEventListener("click", (event) => {
+    if (event.target.closest("summary") && !getSelection().isCollapsed) event.preventDefault();
   });
   window.addEventListener("hashchange", () => {
     readHash();
@@ -704,7 +784,8 @@ async function start() {
   $("updated").textContent = t("page.updated", {
     date: moment.toLocaleDateString(locale),
     time: moment.toLocaleTimeString(locale, { timeStyle: "short" }),
-  }) + (schedule ? t("page.schedule", { crons: schedule.crons.join(t("page.and")), zone: schedule.timezone }) : "");
+  });
+  if (schedule) $("schedule").textContent = t("page.schedule", { crons: schedule.crons.join(t("page.and")), zone: schedule.timezone });
   readHash();
   $("query").value = state.query;
   bindEvents();

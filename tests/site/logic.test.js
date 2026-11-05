@@ -1,7 +1,7 @@
 // Run with: node --test tests/site/logic.test.js
 const assert = require("node:assert");
 const test = require("node:test");
-const { upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, statusAt, hardwareMatch, searchTerms, matchesTerms, upgradeGroup } = require("../../site/logic.js");
+const { tableText, upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, statusAt, hardwareMatch, searchTerms, matchesTerms, upgradeGroup } = require("../../site/logic.js");
 
 const versions = [
   { v: "7.4.1", branch: "7.4" }, { v: "7.4.2", branch: "7.4" },
@@ -133,4 +133,8 @@ test("upgrade notices: the target branch only, fresh when the current version la
     ["common", "7.6.1", false], ["Only here", "7.6.0", true], [null, "7.6.0", true], [null, "7.6.1", true],
   ]);
   assert.deepStrictEqual(upgradeNotices(notices, list, 3, 0), []);
+});
+
+test("copied table: one line per row, cells free of tabs and line breaks", () => {
+  assert.equal(tableText([["Bug", "Text"], ["1", "a\tb\nc"], ["2", null]]), "Bug\tText\n1\ta b c\n2\t");
 });

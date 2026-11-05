@@ -139,6 +139,7 @@
   {"date": "2024-11-28", "version": "7.6.1", "kind": "version", "bugs": []},
   {"date": "2024-12-12", "version": "7.4.6", "kind": "version", "bugs": []},
   {"date": "2025-01-14", "version": "7.0.17", "kind": "version", "bugs": []},
+  {"date": "2025-01-21", "version": "7.4.7", "kind": "version", "bugs": []},
   {"date": "2025-01-28", "version": "7.6.2", "kind": "version", "bugs": []},
   {"date": "2025-02-12", "version": "7.2.11", "kind": "version", "bugs": []},
   {"date": "2025-03-27", "version": "6.4.16", "kind": "version", "bugs": []},

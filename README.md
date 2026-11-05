@@ -16,6 +16,9 @@ informations sont fournies à titre indicatif : vérifiez toujours la documentat
 - Suivi des nouveautés, avec un flux RSS/Atom
 - Interface en français et en anglais
 
+Vos recherches et vos filtres restent dans votre navigateur : ils ne sont ni enregistrés ni
+transmis. Ce projet s'inspire de l'[Upgrade Path Tool](https://docs.fortinet.com/upgrade-tool/) de Fortinet.
+
 ## Mise à jour automatique
 
 Un traitement GitHub Actions s'exécute plusieurs fois par jour en semaine. Il récupère la documentation publique,
@@ -36,7 +39,7 @@ limiter les requêtes, tous les documents ne sont pas vérifiés à chaque passa
 - [Communauté FortiGate](https://community.fortinet.com/fortigate-3) : articles techniques et discussions
 - [Versions recommandées de FortiOS](https://community.fortinet.com/fortigate-3/recommended-release-for-fortios-116639)
 - [Documentation FortiGate / FortiOS](https://docs.fortinet.com/product/fortigate), dont les Release Notes
-- [Upgrade Path Tool](https://docs.fortinet.com/upgrade-tool/fortigate) : chemin de mise à niveau
+- [Upgrade Path Tool](https://docs.fortinet.com/upgrade-tool/) : chemin de mise à niveau, très utile pour préparer une mise à jour
 - [Portail de support](https://support.fortinet.com/) : compte requis
 
 Fortinet propose aussi son propre

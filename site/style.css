@@ -24,6 +24,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 syst
 h1 { margin: 0; font-size: 22px; letter-spacing: -.01em; }
 .top p { margin: 2px 0 0; }
 .top-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.privacy { font-size: 14px; font-weight: 600; }
 .top-actions { flex: none; display: flex; gap: 8px; }
 .theme { flex: none; font: inherit; font-size: 13px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); cursor: pointer; }
 footer { padding-top: 12px; padding-bottom: 28px; font-size: 13px; }

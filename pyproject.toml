@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Structured FortiOS bug data extracted from the official Release Notes PDFs"
 requires-python = ">=3.9"
 license = {text = "AGPL-3.0-or-later"}
-dependencies = ["requests>=2.31", "pymupdf>=1.24"]
+dependencies = ["requests>=2.31", "pymupdf==1.26.5"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]

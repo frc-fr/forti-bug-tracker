@@ -22,3 +22,12 @@ def test_release_notes(pdf):
     assert result.models
     assert all(o["description"] for o in result.observations)
     assert not any("CVE-" in o["description"] for o in result.observations)
+
+
+def test_words_keep_their_spaces():
+    # A text engine upgrade once glued words together without any other symptom.
+    pdf = next((pdf for pdf in PDFS if pdf.stem == "7.6.4"), None)
+    if pdf is None:
+        pytest.skip("7.6.4 not in the corpus")
+    descriptions = {o["bug_id"]: o["description"] for o in parse_pdf(pdf).observations}
+    assert "HW log(ps) rate" in descriptions["1143144"]

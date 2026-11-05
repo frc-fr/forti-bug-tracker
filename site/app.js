@@ -30,7 +30,8 @@ let recommended = { models: {} };
 let annotations = {};
 let versionAnnotations = {};
 let optionsModel = "";
-let checked = "";
+let updated = "";
+let schedule = null;
 let searchTimer;
 const combos = {};
 
@@ -626,7 +627,8 @@ async function start() {
   models = index.models;
   categories = data.categories;
   changes = news;
-  checked = index.checked;
+  updated = index.updated;
+  schedule = index.schedule;
   recommended = index.recommended;
   annotations = data.annotations.bugs;
   versionAnnotations = data.annotations.versions;
@@ -649,7 +651,9 @@ async function start() {
   }
   const latest = [...versions].reverse().find((entry) => !entry.unavailable);
   $("scope").textContent = `Bugs et correctifs de toutes les versions FortiOS, de ${versions[0].branch} à ${latest.branch}`;
-  $("stats").textContent = `${formatNumber(bugs.length)} bugs · ${formatNumber(versions.length)} versions · dernière version ${latest.v} · données vérifiées le ${formatDate(checked)}`;
+  $("stats").textContent = `${formatNumber(bugs.length)} bugs · ${formatNumber(versions.length)} versions · dernière version ${latest.v}`;
+  const moment = new Date(updated).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }).replace(" ", " à ");
+  $("updated").textContent = `Dernière mise à jour le ${moment} (heure locale)${schedule ? ` · mise à jour automatique : cron ${schedule.crons.join(" et ")} (${schedule.timezone})` : ""}`;
   readHash();
   $("query").value = state.query;
   bindEvents();

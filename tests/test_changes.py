@@ -1,7 +1,7 @@
 import json
 from xml.etree import ElementTree
 
-from fortibugs.build import build_bugs, load_annotations
+from fortibugs.build import build_bugs, load_annotations, workflow_schedule
 from fortibugs.extract import diff_version, read_changes, write_changes
 from fortibugs.feed import ATOM, build_feed, latest_changes, title_of
 
@@ -79,3 +79,12 @@ def test_annotations_keep_known_bugs_only(tmp_path):
     index = {"versions": [{"v": "7.6.8"}]}
     assert load_annotations(path, {"bugs": [["100000"]]}, index) == {"bugs": {"100000": note}, "versions": {"7.6.8": note}}
     assert load_annotations(tmp_path / "missing.json", {"bugs": []}, index) == {"bugs": {}, "versions": {}}
+
+
+def test_schedule_comes_from_the_workflow(tmp_path):
+    path = tmp_path / "update.yml"
+    path.write_text('on:\n  schedule:\n    - cron: "1 2 * * *"\n      timezone: "Europe/Paris"\n    - cron: "3 4 * * *"\n')
+    assert workflow_schedule(path) == {"crons": ["1 2 * * *", "3 4 * * *"], "timezone": "Europe/Paris"}
+    path.write_text('on:\n  schedule:\n    - cron: "1 2 * * *"\n')
+    assert workflow_schedule(path)["timezone"] == "UTC"
+    assert workflow_schedule(tmp_path / "missing.yml") is None

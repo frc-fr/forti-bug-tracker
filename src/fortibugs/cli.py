@@ -12,6 +12,7 @@ def main() -> None:
     parser.add_argument("--manifest", type=Path, default=Path("sources/manifest.json"))
     parser.add_argument("--recommended", type=Path, default=Path("sources/recommended.json"))
     parser.add_argument("--annotations", type=Path, default=Path("sources/annotations.json"))
+    parser.add_argument("--workflow", type=Path, default=Path(".github/workflows/update.yml"))
     parser.add_argument("--cache", type=Path, default=Path(".cache/pdfs"))
     parser.add_argument("--output", type=Path, default=Path("data/extracted"))
     parser.add_argument("--changes", type=Path, default=Path("data/changes.json"))
@@ -19,7 +20,8 @@ def main() -> None:
     parser.add_argument("--base-url", default="https://frc-fr.github.io/forti-bug-tracker/")
     parser.add_argument("--dist", type=Path, default=Path("dist"))
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("collect", help="update the manifest and download changed PDFs")
+    collect_command = commands.add_parser("collect", help="update the manifest and download changed PDFs")
+    collect_command.add_argument("--all", action="store_true", help="also check the dormant branches")
     commands.add_parser("extract", help="parse the cached PDFs; fails on any warning")
     commands.add_parser("build", help="generate the static site from the extracted data")
     args = parser.parse_args()
@@ -27,7 +29,7 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     if args.command == "collect":
         client = collect.Client()
-        manifest = collect.update_manifest(args.manifest, client)
+        manifest = collect.update_manifest(args.manifest, client, check_all=args.all)
         downloaded = collect.download_pdfs(manifest, args.cache, client)
         collect.save_manifest(args.manifest, manifest)
         recommended.update_recommended(args.recommended, client)
@@ -40,7 +42,7 @@ def main() -> None:
         sys.exit(1 if problems else 0)
     elif args.command == "build":
         summary = build.build_site(
-            args.output, args.manifest, args.changes, args.recommended, args.annotations,
+            args.output, args.manifest, args.changes, args.recommended, args.annotations, args.workflow,
             args.site, args.dist, args.base_url,
         )
         logging.info("%s", summary)

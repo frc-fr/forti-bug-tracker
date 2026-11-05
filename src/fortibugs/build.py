@@ -1,14 +1,16 @@
 """Generate the static site: copy site/ and cross the extracted data into dist/data."""
 import json
 import logging
+import re
 import shutil
 from collections import Counter
+from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from .collect import PAGE_URL, load_manifest
-from .extract import read_changes, today
+from .extract import read_changes
 from .feed import build_feed, latest_changes
 from .normalize import canonical_model, hardware_tags, model_core, normalize_category
 from .recommended import resolve_models
@@ -33,6 +35,16 @@ def revision_date(entry: dict) -> Optional[str]:
     return parsedate_to_datetime(stamp).strftime("%Y-%m-%d") if stamp else None
 
 
+def workflow_schedule(path: Path) -> Optional[dict]:
+    """The crons of the update workflow, read there so the site cannot contradict it."""
+    text = path.read_text(encoding="utf-8") if path.exists() else ""
+    crons = re.findall(r'cron:\s*"([^"]+)"', text)
+    timezone_name = re.search(r'timezone:\s*"([^"]+)"', text)
+    if not crons:
+        return None
+    return {"crons": crons, "timezone": timezone_name.group(1) if timezone_name else "UTC"}
+
+
 def build_index(documents: Dict[str, dict], manifest: Dict[str, dict]) -> dict:
     versions = sorted(set(documents) | set(manifest), key=version_key)
     models: Dict[str, List[str]] = {}
@@ -42,7 +54,7 @@ def build_index(documents: Dict[str, dict], manifest: Dict[str, dict]) -> dict:
     all_models = sorted({model for names in models.values() for model in names})
     positions = {model: index for index, model in enumerate(all_models)}
     return {
-        "checked": today(),
+        "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "models": all_models,
         "versions": [
             {
@@ -137,12 +149,13 @@ def build_bugs(documents: Dict[str, dict], index: dict) -> dict:
 
 def build_site(
     extracted: Path, manifest_path: Path, changes_path: Path, recommended_path: Path,
-    annotations_path: Path, sources: Path, dist: Path, base_url: str,
+    annotations_path: Path, workflow_path: Path, sources: Path, dist: Path, base_url: str,
 ) -> dict:
     documents = load_extracted(extracted)
     manifest = load_manifest(manifest_path)
     index = build_index(documents, manifest)
     index["recommended"] = build_recommended(recommended_path, index)
+    index["schedule"] = workflow_schedule(workflow_path)
     bugs = build_bugs(documents, index)
     bugs["annotations"] = load_annotations(annotations_path, bugs, index)
     changes = latest_changes(read_changes(changes_path), documents)

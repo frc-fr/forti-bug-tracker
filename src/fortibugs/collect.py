@@ -10,8 +10,10 @@ import json
 import logging
 import re
 import time
+from datetime import date, timedelta
+from email.utils import parsedate_to_datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 import requests
 
@@ -24,6 +26,9 @@ PAGE_URL = DOCS_URL + "/document/fortigate/{version}/fortios-release-notes"
 USER_AGENT = "forti-bug-tracker/0.1 (+https://github.com/frc-fr/forti-bug-tracker)"
 CRAWL_DELAY = 2.0
 SEED_VERSION = "7.6.4"
+# Fortinet revises old versions of a live branch, and only those: the age of a
+# version says nothing, the last revision seen in its branch does.
+ACTIVE_DAYS = 90
 
 VERSION_LINK = re.compile(r"/document/fortigate/(\d+\.\d+\.\d+)/fortios-release-notes")
 PDF_LINK = re.compile(r"https://fortinetweb\.s3\.amazonaws\.com/[^\"'\s<>]+?\.pdf")
@@ -101,19 +106,32 @@ def object_state(client: Client, url: str) -> Optional[dict]:
     }
 
 
-def update_manifest(path: Path, client: Client) -> Dict[str, dict]:
+def active_branches(manifest: Dict[str, dict], today: date) -> Set[str]:
+    """Branches with a PDF revised lately; a dormant one wakes up with its next revision."""
+    cutoff = today - timedelta(days=ACTIVE_DAYS)
+    return {
+        entry["branch"] for entry in manifest.values()
+        if entry.get("last_modified") and parsedate_to_datetime(entry["last_modified"]).date() >= cutoff
+    }
+
+
+def update_manifest(path: Path, client: Client, check_all: bool = True) -> Dict[str, dict]:
     """Add new versions and refresh the state of the known ones.
 
-    The manifest is saved after every new version so that an interrupted crawl
-    resumes where it stopped.
+    New versions are always found. Without check_all, the known PDFs of dormant
+    branches are left out. The manifest is saved after every new version so that
+    an interrupted crawl resumes where it stopped.
     """
     manifest = load_manifest(path)
+    active = active_branches(manifest, date.today())
     seed = max(manifest, key=version_key) if manifest else SEED_VERSION
     versions = sorted(set(list_versions(client, seed)) | set(manifest), key=version_key)
     log.info("%d versions listed, %d already known", len(versions), len(manifest))
 
     for version in versions:
         entry = manifest.get(version)
+        if entry and not check_all and entry["branch"] not in active:
+            continue
         state = object_state(client, entry["pdf_url"]) if entry else None
         if state is None:
             # New version, or the known URL is gone: the page has the current one.

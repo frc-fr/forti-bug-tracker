@@ -17,9 +17,18 @@ informations sont fournies à titre indicatif : vérifiez toujours la documentat
 
 ## Mise à jour automatique
 
-Un traitement GitHub Actions s'exécute chaque jour. Il récupère la documentation publique,
+Un traitement GitHub Actions s'exécute plusieurs fois par jour en semaine. Il récupère la documentation publique,
 en extrait les données, les contrôle, puis publie le site sur GitHub Pages. Si un contrôle
 échoue, le site conserve ses dernières données valides.
+
+Le traitement tourne du lundi au vendredi à 9 h 15, 14 h 15 et 19 h 00, heure de Paris. Pour
+limiter les requêtes, tous les documents ne sont pas vérifiés à chaque passage :
+
+- Une branche FortiOS est active si l'un de ses documents a été révisé dans les 90 derniers
+  jours. Tous ses documents sont alors vérifiés à chaque passage, quel que soit leur âge.
+- Les branches dormantes ne sont vérifiées que le lundi et lors d'un lancement manuel.
+- Les nouvelles versions sont détectées à chaque passage, sur toutes les branches.
+- Une branche dormante révisée redevient active d'elle-même.
 
 ## Liens utiles chez Fortinet
 

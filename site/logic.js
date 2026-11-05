@@ -8,24 +8,24 @@ function statusAt(bug, index, versions) {
   if (own.some(([v, status]) => v === index && status !== "r")) return { key: "affected" };
 
   const fixed = own.find(([v, status]) => status === "r" && v <= index);
-  if (fixed) return { key: "fixed", detail: `depuis ${versions[fixed[0]].v}` };
+  if (fixed) return { key: "fixed", detail: { id: "fixedSince", version: versions[fixed[0]].v } };
 
   // Reported as new later on: nothing suggests that this older version has it.
   if (own.length && own[0][1] === "n" && own[0][0] > index) {
-    return { key: "unknown", detail: `signalé comme nouveau en ${versions[own[0][0]].v}` };
+    return { key: "unknown", detail: { id: "reportedNew", version: versions[own[0][0]].v } };
   }
 
   const fixedLater = own.find(([v, status]) => status === "r" && v > index);
-  if (fixedLater) return { key: "potential", detail: `corrigé en ${versions[fixedLater[0]].v}` };
+  if (fixedLater) return { key: "potential", detail: { id: "fixedIn", version: versions[fixedLater[0]].v } };
 
   const knownLater = own.find(([v]) => v > index);
-  if (knownLater) return { key: "potential", detail: `connu en ${versions[knownLater[0]].v}` };
+  if (knownLater) return { key: "potential", detail: { id: "knownIn", version: versions[knownLater[0]].v } };
 
   if (own.length) {
     const last = own[own.length - 1][0];
-    return { key: "unknown", detail: `retiré des notes après ${versions[last].v}, sans correctif documenté` };
+    return { key: "unknown", detail: { id: "dropped", version: versions[last].v } };
   }
-  return { key: "unknown", detail: "pas de mention sur cette branche" };
+  return { key: "unknown", detail: { id: "noMention" } };
 }
 
 function modelFamily(core) {

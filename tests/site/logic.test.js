@@ -48,7 +48,7 @@ test("no mention on the branch: unknown, a fix elsewhere does not count", () => 
 test("dropped from the notes without a fix: unknown", () => {
   const status = statusAt({ events: [[2, "k", 1]] }, 4, versions);
   assert.equal(status.key, "unknown");
-  assert.match(status.detail, /retiré des notes après 7.6.0/);
+  assert.deepEqual(status.detail, { id: "dropped", version: "7.6.0" });
 });
 
 test("the hardware filter is inclusive", () => {

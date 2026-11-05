@@ -1,4 +1,4 @@
-"""Describe the change log for the "Quoi de neuf" page and the Atom feed."""
+"""Describe the change log for the "What's new" page, in both languages, and the Atom feed in English."""
 import html
 from typing import Dict, List
 from xml.etree import ElementTree
@@ -16,20 +16,28 @@ def plural(count: int, singular: str, several: str) -> str:
     return f"{count} {singular if count == 1 else several}"
 
 
-def title_of(change: dict, documents: Dict[str, dict]) -> str:
+def titles_of(change: dict, documents: Dict[str, dict]) -> Dict[str, str]:
     version = change["version"]
     count = len(change["bugs"])
     if change["kind"] == "known_added":
-        return f"FortiOS {version} : {plural(count, 'bug connu ajouté', 'bugs connus ajoutés')} aux notes"
+        return {
+            "fr": f"FortiOS {version} : {plural(count, 'bug connu ajouté', 'bugs connus ajoutés')} aux notes",
+            "en": f"FortiOS {version}: {plural(count, 'known bug', 'known bugs')} added to the notes",
+        }
     if change["kind"] == "fixed_added":
-        return f"FortiOS {version} : {plural(count, 'correction ajoutée', 'corrections ajoutées')} aux notes"
+        return {
+            "fr": f"FortiOS {version} : {plural(count, 'correction ajoutée', 'corrections ajoutées')} aux notes",
+            "en": f"FortiOS {version}: {plural(count, 'fix', 'fixes')} added to the notes",
+        }
     observations = documents.get(version, {}).get("observations", [])
     fixed = len({o["bug_id"] for o in observations if o["status"] == "resolved"})
     known = len({o["bug_id"] for o in observations if o["status"] != "resolved"})
-    return (
-        f"FortiOS {version} publiée : {plural(fixed, 'bug corrigé', 'bugs corrigés')}, "
-        f"{plural(known, 'bug connu', 'bugs connus')}"
-    )
+    return {
+        "fr": f"FortiOS {version} publiée : {plural(fixed, 'bug corrigé', 'bugs corrigés')}, "
+              f"{plural(known, 'bug connu', 'bugs connus')}",
+        "en": f"FortiOS {version} released: {plural(fixed, 'fixed bug', 'fixed bugs')}, "
+              f"{plural(known, 'known bug', 'known bugs')}",
+    }
 
 
 def latest_changes(changes: List[dict], documents: Dict[str, dict], limit: int = PAGE_SIZE) -> List[dict]:
@@ -38,7 +46,7 @@ def latest_changes(changes: List[dict], documents: Dict[str, dict], limit: int =
         key=lambda c: (c["date"], version_key(c["version"]), c["kind"]),
         reverse=True,
     )
-    return [{**change, "title": title_of(change, documents)} for change in ordered[:limit]]
+    return [{**change, "titles": titles_of(change, documents)} for change in ordered[:limit]]
 
 
 def entry_link(change: dict, base_url: str) -> str:
@@ -52,8 +60,8 @@ def entry_content(change: dict, descriptions: Dict[str, str], base_url: str) -> 
     ]
     hidden = len(change["bugs"]) - len(items)
     if hidden > 0:
-        items.append(f"<li>et {hidden} autres</li>")
-    return f"<ul>{''.join(items)}</ul>" if items else html.escape(change["title"])
+        items.append(f"<li>and {hidden} more</li>")
+    return f"<ul>{''.join(items)}</ul>" if items else html.escape(change["titles"]["en"])
 
 
 def build_feed(changes: List[dict], descriptions: Dict[str, str], base_url: str) -> bytes:
@@ -66,8 +74,8 @@ def build_feed(changes: List[dict], descriptions: Dict[str, str], base_url: str)
         element.text = text
         return element
 
-    add(feed, "title", "FortiOS Bug Tracker : quoi de neuf")
-    add(feed, "subtitle", "Nouvelles versions FortiOS et bugs ajoutés aux Release Notes publiées")
+    add(feed, "title", "FortiOS Bug Tracker: what's new")
+    add(feed, "subtitle", "New FortiOS versions and bugs added to published Release Notes")
     add(feed, "id", ID_PREFIX)
     add(feed, "link", href=base_url)
     add(feed, "link", rel="self", href=f"{base_url}feed.xml")
@@ -75,7 +83,7 @@ def build_feed(changes: List[dict], descriptions: Dict[str, str], base_url: str)
     add(add(feed, "author"), "name", "forti-bug-tracker")
     for change in changes[:FEED_SIZE]:
         entry = add(feed, "entry")
-        add(entry, "title", change["title"])
+        add(entry, "title", change["titles"]["en"])
         add(entry, "id", f"{ID_PREFIX}/{change['date']}/{change['version']}/{change['kind']}")
         add(entry, "link", href=entry_link(change, base_url))
         add(entry, "updated", f"{change['date']}T00:00:00Z")

@@ -1,17 +1,17 @@
 "use strict";
 
 const PAGE_SIZE = 100;
-const KNOWN_LABELS = { k: "Connu", n: "Connu (nouveau)", e: "Connu (existant)", r: "Corrigé" };
+const KNOWN_LABELS = { k: t("known.k"), n: t("known.n"), e: t("known.e"), r: t("status.fixed") };
 const STATUSES = {
-  affected: "Affecté",
-  potential: "Potentiellement affecté",
-  fixed: "Corrigé",
-  unknown: "Inconnu",
+  affected: t("status.affected"),
+  potential: t("status.potential"),
+  fixed: t("status.fixed"),
+  unknown: t("status.unknown"),
 };
 const UPGRADE_GROUPS = {
-  gained: "Corrigés par la mise à niveau",
-  introduced: "Nouveaux bugs connus",
-  remaining: "Toujours présents",
+  gained: t("group.gained"),
+  introduced: t("group.introduced"),
+  remaining: t("group.remaining"),
 };
 
 const $ = (id) => document.getElementById(id);
@@ -37,9 +37,9 @@ const combos = {};
 
 const escapeHtml = (text) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const formatNumber = (n) => n.toLocaleString("fr-FR");
+const formatNumber = (n) => n.toLocaleString(locale);
 const formatDate = (iso) => iso.split("-").reverse().join("/");
-const formatMonth = (month) => new Date(`${month}-01T12:00:00`).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+const formatMonth = (month) => new Date(`${month}-01T12:00:00`).toLocaleDateString(locale, { month: "long", year: "numeric" });
 
 /** Text field that filters a list of options as you type. */
 class Combobox {
@@ -163,7 +163,7 @@ class Combobox {
       const classes = index === this.active ? "combo-option active" : "combo-option";
       items.push(`<li id="${this.list.id}-${index}" class="${classes}" role="option" data-index="${index}" aria-selected="${option.value === this.current}">${escapeHtml(option.label)}</li>`);
     });
-    this.list.innerHTML = items.join("") || '<li class="combo-empty">Aucun résultat</li>';
+    this.list.innerHTML = items.join("") || `<li class="combo-empty">${t("filter.noResult")}</li>`;
   }
 
   scrollToActive() {
@@ -232,16 +232,16 @@ function highlight(text, terms) {
 
 function fixesLabel(bug) {
   const entries = [...bug.fixes.entries()].reverse().map(([, version]) => versions[version].v);
-  return entries.length ? `Corrigé en ${entries.join(", ")}` : "Aucun correctif dans les notes";
+  return entries.length ? t("bug.fixedIn", { versions: entries.join(", ") }) : t("bug.noFix");
 }
 
 function hardwareTags(bug, hardware) {
   const tags = [
     ...bug.cores,
-    ...bug.families.map((family) => (family === "VM" ? "VM" : `Série ${family}`)),
+    ...bug.families.map((family) => (family === "VM" ? "VM" : t("bug.series", { family }))),
   ].map((name) => `<span class="tag hw">${escapeHtml(name)}</span>`);
-  bug.asics.forEach((asic) => tags.push(`<span class="tag" title="ASIC à vérifier pour votre modèle">${escapeHtml(asic)}</span>`));
-  if (hardware === "generic") tags.push('<span class="tag">Générique</span>');
+  bug.asics.forEach((asic) => tags.push(`<span class="tag" title="${t("bug.asic")}">${escapeHtml(asic)}</span>`));
+  if (hardware === "generic") tags.push(`<span class="tag">${t("bug.generic")}</span>`);
   return tags.join("");
 }
 
@@ -253,26 +253,22 @@ function renderAppearance(bug) {
     if (status !== "r" && !first.has(branch)) first.set(branch, [version, status]);
   }
   if (!first.size) {
-    return "<p>Non publiée par Fortinet. Ce bug n'a jamais figuré dans les Known issues : les notes indiquent seulement sa correction.</p>";
+    return `<p>${t("bug.neverKnown")}</p>`;
   }
   const lines = [...first].reverse().map(([branch, [version, status]]) => {
-    const name = versions[version].v;
-    const text = {
-      n: `Identifié en ${name}, nouveau bug connu de cette version`,
-      e: `Déjà présent en ${name}, identifié dans une version antérieure`,
-      k: `Mentionné pour la première fois en ${name}`,
-    }[status];
+    const key = { n: "bug.firstNew", e: "bug.firstExisting", k: "bug.firstKnown" }[status];
+    const text = t(key, { version: versions[version].v });
     return `<dt>${escapeHtml(branch)}</dt><dd>${escapeHtml(text)}</dd>`;
   });
   return `<dl class="history">${lines.join("")}</dl>
-    <p class="note">Première mention dans les notes de chaque branche. Fortinet ne publie pas la version d'introduction : le bug peut être plus ancien.</p>`;
+    <p class="note">${t("bug.appearanceNote")}</p>`;
 }
 
 function renderHistory(bug) {
   const lines = [...bug.events].reverse().map(([version, status, page]) => {
     const entry = versions[version];
     const label = KNOWN_LABELS[status];
-    const link = entry.pdf ? `<a href="${escapeHtml(entry.pdf)}#page=${page}" target="_blank" rel="noopener">note officielle, p. ${page}</a>` : "";
+    const link = entry.pdf ? `<a href="${escapeHtml(entry.pdf)}#page=${page}" target="_blank" rel="noopener">${t("bug.officialPage", { page })}</a>` : "";
     return `<dt>${escapeHtml(entry.v)}</dt><dd>${label} · ${link}</dd>`;
   });
   return `<dl class="history">${lines.join("")}</dl>`;
@@ -280,15 +276,19 @@ function renderHistory(bug) {
 
 function renderNotes(bug, terms) {
   return bug.notes.map((note) => `<h3>${escapeHtml(note.label)}</h3>
-    <p>${highlight(note.text, terms)} <a href="${escapeHtml(note.url)}" target="_blank" rel="noopener">Article Fortinet</a></p>`).join("");
+    <p>${highlight(note.text, terms)} <a href="${escapeHtml(note.url)}" target="_blank" rel="noopener">${t("bug.article")}</a></p>`).join("");
+}
+
+function statusDetail(detail) {
+  return detail ? `<span>${escapeHtml(t(`detail.${detail.id}`, detail))}</span>` : "";
 }
 
 function renderBug({ bug, status, hardware }, terms) {
   const badge = status
-    ? `<span class="badge ${status.key}">${STATUSES[status.key]}</span>${status.detail ? `<span>${escapeHtml(status.detail)}</span>` : ""}`
+    ? `<span class="badge ${status.key}">${STATUSES[status.key]}</span>${statusDetail(status.detail)}`
     : "";
   const workaround = bug.workaround
-    ? `<h3>Contournement</h3><p>${highlight(bug.workaround, terms)}</p>`
+    ? `<h3>${t("bug.workaround")}</h3><p>${highlight(bug.workaround, terms)}</p>`
     : "";
   return `<details class="bug" data-id="${bug.id}">
     <summary>
@@ -296,7 +296,7 @@ function renderBug({ bug, status, hardware }, terms) {
       <span class="bug-text">${highlight(bug.description, terms)}</span>
       <span class="bug-meta">${badge}<span>${escapeHtml(categories[bug.category])}</span><span>${escapeHtml(fixesLabel(bug))}</span>${bug.notes.map((note) => `<span class="badge fixed">${escapeHtml(note.label)}</span>`).join("")}${hardwareTags(bug, hardware)}</span>
     </summary>
-    <div class="bug-detail">${renderNotes(bug, terms)}<h3>Apparition</h3>${renderAppearance(bug)}${workaround}<h3>Historique dans les notes</h3>${renderHistory(bug)}</div>
+    <div class="bug-detail">${renderNotes(bug, terms)}<h3>${t("bug.appearance")}</h3>${renderAppearance(bug)}${workaround}<h3>${t("bug.history")}</h3>${renderHistory(bug)}</div>
   </details>`;
 }
 
@@ -319,21 +319,21 @@ function renderNotices() {
   const selected = [versionIndex(state.version), state.view === "upgrade" ? versionIndex(state.from) : -1];
   for (const index of selected) {
     if (index >= 0 && versions[index].unavailable) {
-      notices.push(`Les notes de la version ${versions[index].v} ne sont pas accessibles : ses corrections et ses bugs connus sont absents, les statuts de cette version sont incomplets.`);
+      notices.push(t("notice.unavailable", { version: versions[index].v }));
     }
   }
   const version = selected[0];
   if (version >= 0 && state.model && !versions[version].unavailable) {
     const position = models.indexOf(state.model);
     if (!versions[version].models.includes(position)) {
-      notices.push(`Le modèle ${state.model} n'apparaît pas dans la liste des modèles supportés par FortiOS ${versions[version].v}.`);
+      notices.push(t("notice.notListed", { model: state.model, version: versions[version].v }));
     }
   }
   if (state.view === "upgrade" && versionIndex(state.from) >= 0 && version >= 0 && versionIndex(state.from) >= version) {
-    notices.push("La version cible doit être plus récente que la version actuelle.");
+    notices.push(t("notice.order"));
   }
   const articles = versionNotes(versionAnnotations, state.version, searchTerms(state.query), versions.map((entry) => entry.v)).map((note) =>
-    `<p class="notice"><strong>FortiOS ${escapeHtml(note.version)} : ${escapeHtml(note.label)}.</strong> ${escapeHtml(note.text)} <a href="${escapeHtml(note.url)}" target="_blank" rel="noopener">Article Fortinet</a></p>`);
+    `<p class="notice"><strong>${escapeHtml(t("notice.article", note))}</strong> ${escapeHtml(note.text)} <a href="${escapeHtml(note.url)}" target="_blank" rel="noopener">${t("bug.article")}</a></p>`);
   $("notices").innerHTML = notices.map((text) => `<p class="notice">${escapeHtml(text)}</p>`).join("") + articles.join("");
 }
 
@@ -343,9 +343,9 @@ function renderVersionInfo() {
   if (entry && !entry.unavailable) {
     parts.push(`FortiOS ${escapeHtml(entry.v)}`);
     if (entry.build) parts.push(`build ${escapeHtml(entry.build)}`);
-    if (entry.released) parts.push(`publiée le ${formatDate(entry.released)}`);
-    if (entry.revised) parts.push(`note révisée le ${formatDate(entry.revised)}`);
-    if (entry.pdf) parts.push(`<a href="${escapeHtml(entry.pdf)}" target="_blank" rel="noopener">note officielle</a>`);
+    if (entry.released) parts.push(t("version.released", { date: formatDate(entry.released) }));
+    if (entry.revised) parts.push(t("version.revised", { date: formatDate(entry.revised) }));
+    if (entry.pdf) parts.push(`<a href="${escapeHtml(entry.pdf)}" target="_blank" rel="noopener">${t("version.official")}</a>`);
   }
   $("version-info").innerHTML = parts.join(" · ");
 }
@@ -356,14 +356,14 @@ function renderRecommendation() {
     $("recommendation").innerHTML = "";
     return;
   }
-  const parts = [`Version recommandée par Fortinet pour ${escapeHtml(state.model)} : <strong>${escapeHtml(entry.release)}</strong>`];
+  const parts = [t("advice.main", { model: escapeHtml(state.model), release: escapeHtml(entry.release) })];
   if (state.version !== entry.release) {
     const params = stateParams();
     params.set("version", entry.release);
-    parts.push(`<a href="#${escapeHtml(params.toString())}">Voir cette version</a>`);
+    parts.push(`<a href="#${escapeHtml(params.toString())}">${t("advice.view")}</a>`);
   }
-  if (entry.ended) parts.push("support ingénierie terminé");
-  parts.push(`<a href="${escapeHtml(recommended.source)}" target="_blank" rel="noopener">article Fortinet, état ${formatMonth(recommended.as_of)}</a>`);
+  if (entry.ended) parts.push(t("advice.ended"));
+  parts.push(`<a href="${escapeHtml(recommended.source)}" target="_blank" rel="noopener">${t("advice.source", { month: formatMonth(recommended.as_of) })}</a>`);
   $("recommendation").innerHTML = parts.join(" · ");
 }
 
@@ -387,7 +387,7 @@ function latestCard(title, field) {
 function pdfLine(version) {
   const entry = versions.find((candidate) => candidate.v === version);
   if (!entry || !entry.pdf || !entry.revised) return "";
-  return `<p class="news-pdf">PDF révisé le ${formatDate(entry.revised)} · <a href="${escapeHtml(entry.pdf)}" target="_blank" rel="noopener">note officielle</a></p>`;
+  return `<p class="news-pdf">${t("news.revised", { date: formatDate(entry.revised) })} · <a href="${escapeHtml(entry.pdf)}" target="_blank" rel="noopener">${t("version.official")}</a></p>`;
 }
 
 function renderHardware() {
@@ -398,7 +398,7 @@ function renderHardware() {
     current: matching.filter((entry) => entry.current).length,
     stopped: matching.filter((entry) => !entry.current).length,
   };
-  const labels = { all: "Tous", current: "Dernière branche", stopped: "Plus dans la dernière branche" };
+  const labels = { all: t("hardware.all"), current: t("hardware.current"), stopped: t("hardware.stopped") };
   $("chips").innerHTML = Object.entries(labels).map(([key, label]) =>
     `<button type="button" class="chip" data-hardware="${key}" aria-pressed="${state.hardware === key}">${label} (${formatNumber(counts[key])})</button>`).join("");
 
@@ -407,12 +407,12 @@ function renderHardware() {
     .sort((a, b) => a.model.localeCompare(b.model, "fr", { numeric: true }))
     .map((entry) => {
       const badge = entry.current
-        ? '<span class="badge fixed">Dernière branche</span>'
-        : `<span class="badge potential">Arrêt après ${escapeHtml(entry.branch)}</span>`;
+        ? `<span class="badge fixed">${t("hardware.current")}</span>`
+        : `<span class="badge potential">${t("hardware.stoppedAfter", { branch: escapeHtml(entry.branch) })}</span>`;
       const advice = recommended.models[entry.model];
       const support = !advice ? "—" : advice.ended
-        ? '<span class="badge potential">Terminé</span>'
-        : '<span class="badge fixed">En cours</span>';
+        ? `<span class="badge potential">${t("hardware.ended")}</span>`
+        : `<span class="badge fixed">${t("hardware.ongoing")}</span>`;
       const release = advice
         ? `<a href="#${new URLSearchParams({ version: advice.release, model: entry.model })}">${escapeHtml(advice.release)}</a>`
         : "—";
@@ -420,9 +420,9 @@ function renderHardware() {
         <td>${escapeHtml(entry.first)}</td><td>${escapeHtml(entry.last)}</td><td>${badge}</td><td>${release}</td><td>${support}</td></tr>`;
     });
   $("results").innerHTML = rows.length
-    ? `<table class="hardware-table"><thead><tr><th scope="col">Modèle</th><th scope="col">Première version</th><th scope="col">Dernière version</th><th scope="col">Statut FortiOS</th><th scope="col">Version recommandée</th><th scope="col">Support ingénierie</th></tr></thead><tbody>${rows.join("")}</tbody></table>`
+    ? `<table class="hardware-table"><thead><tr>${["model", "first", "last", "status", "release", "support"].map((key) => `<th scope="col">${t(`hardware.${key}`)}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>`
     : "";
-  $("count").textContent = rows.length ? "" : "Aucun modèle pour ces critères.";
+  $("count").textContent = rows.length ? "" : t("hardware.none");
   $("more").hidden = true;
   $("notices").innerHTML = "";
   $("version-info").innerHTML = "";
@@ -433,9 +433,9 @@ function renderHardware() {
 
 function renderNews() {
   const advised = currentRecommendations(recommended.models);
-  $("news-summary").innerHTML = latestCard("Dernière version publiée", "released")
-    + latestCard("Dernier PDF mis à jour", "revised")
-    + (advised.length ? newsCard("Recommandée par Fortinet", formatMonth(recommended.as_of), advised) : "");
+  $("news-summary").innerHTML = latestCard(t("news.latestRelease"), "released")
+    + latestCard(t("news.latestPdf"), "revised")
+    + (advised.length ? newsCard(t("news.recommended"), formatMonth(recommended.as_of), advised) : "");
   const byId = new Map(bugs.map((bug) => [bug.id, bug]));
   const entries = changes.map((change) => {
     const items = change.bugs.slice(0, 20).map((id) => {
@@ -443,10 +443,10 @@ function renderNews() {
       return `<li><a href="#query=${id}">${id}</a> ${bug ? escapeHtml(bug.description) : ""}</li>`;
     });
     const hidden = change.bugs.length - items.length;
-    if (hidden > 0) items.push(`<li class="muted">et ${formatNumber(hidden)} autres</li>`);
+    if (hidden > 0) items.push(`<li class="muted">${t("news.more", { count: formatNumber(hidden) })}</li>`);
     return `<article class="news">
       <time datetime="${change.date}">${formatDate(change.date)}</time>
-      <h2><a href="#version=${escapeHtml(change.version)}">${escapeHtml(change.title)}</a></h2>
+      <h2><a href="#version=${escapeHtml(change.version)}">${escapeHtml(change.titles[language])}</a></h2>
       ${pdfLine(change.version)}
       ${items.length ? `<ul>${items.join("")}</ul>` : ""}
     </article>`;
@@ -480,15 +480,16 @@ function render() {
 
   const waiting = state.view === "upgrade" && (!state.from || !state.version);
   $("count").textContent = waiting
-    ? "Choisissez la version actuelle et la version cible."
-    : rows.length ? `${formatNumber(rows.length)} bug${rows.length > 1 ? "s" : ""}` : "Aucun bug pour ces critères.";
+    ? t("count.choose")
+    : rows.length > 1 ? t("count.many", { count: formatNumber(rows.length) }) : t(rows.length ? "count.one" : "count.none");
   $("results").innerHTML = rows.slice(0, state.shown).map((row) => renderBug(row, terms)).join("");
   $("more").hidden = rows.length <= state.shown;
   writeHash();
 }
 
-function stateParams() {
+function stateParams(shown = language) {
   const params = new URLSearchParams();
+  if (shown === "en") params.set("lang", "en");
   if (state.view !== "bugs") params.set("view", state.view);
   for (const key of ["query", "version", "from", "model", "category"]) {
     if (state[key]) params.set(key, state[key]);
@@ -521,31 +522,26 @@ function syncControls() {
   $("hardware-tools").hidden = !hardware;
   $("subscribe").hidden = !news;
   $("field-from").hidden = !upgrade;
-  $("version-label").textContent = upgrade ? "Version cible" : "Version FortiOS";
-  $("view-help").textContent = {
-    bugs: "Trouve un bug par numéro ou mots-clés, et son statut sur votre version et votre matériel.",
-    upgrade: "Indique ce que change le passage d'une version à une autre : bugs corrigés, nouveaux bugs connus et bugs toujours présents.",
-    news: "Les nouvelles versions, et les bugs que Fortinet ajoute après coup aux notes déjà publiées.",
-    hardware: "Pour chaque modèle, la première et la dernière version FortiOS qui le supportent, et la version recommandée par Fortinet.",
-  }[state.view];
+  $("version-label").textContent = t(upgrade ? "filter.target" : "filter.version");
+  $("view-help").textContent = t(`help.${state.view}`);
   if (state.model !== optionsModel) {
     optionsModel = state.model;
-    combos.version.setOptions(versionOptions("Toutes les versions"));
-    combos.from.setOptions(versionOptions("Choisir"));
+    combos.version.setOptions(versionOptions(t("filter.allVersions")));
+    combos.from.setOptions(versionOptions(t("filter.choose")));
   }
   for (const key of ["version", "from", "model", "category"]) combos[key].value = state[key];
 }
 
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
-  $("theme").textContent = theme === "dark" ? "Passer en blanc" : "Passer en noir";
+  $("theme").textContent = t(theme === "dark" ? "theme.light" : "theme.dark");
 }
 
 function versionOptions(placeholder) {
   const advice = recommended.models[state.model];
   const options = [...versions].reverse().map((entry) => {
-    const suffix = entry.unavailable ? " (notes indisponibles)" : entry.build ? ` (build ${entry.build})` : "";
-    const mark = advice && advice.release === entry.v ? " · recommandée" : "";
+    const suffix = entry.unavailable ? t("option.unavailable") : entry.build ? ` (build ${entry.build})` : "";
+    const mark = advice && advice.release === entry.v ? t("option.recommended") : "";
     return { value: entry.v, label: `${entry.v}${suffix}${mark}`, group: `FortiOS ${entry.branch}` };
   });
   return [{ value: "", label: placeholder }, ...options];
@@ -553,7 +549,7 @@ function versionOptions(placeholder) {
 
 function modelLabel(model) {
   const lifecycle = lifecycles.find((entry) => entry.model === model);
-  return lifecycle.current ? model : `${model} (jusqu'à ${lifecycle.branch})`;
+  return lifecycle.current ? model : t("option.until", { model, branch: lifecycle.branch });
 }
 
 function modelOptions() {
@@ -562,7 +558,7 @@ function modelOptions() {
     .filter((model) => model.startsWith(`${prefix}-`))
     .sort((a, b) => a.localeCompare(b, "fr", { numeric: true }))
     .map((model) => ({ value: model, label: modelLabel(model), group })));
-  return [{ value: "", label: "Tous les matériels" }, ...options];
+  return [{ value: "", label: t("filter.allModels") }, ...options];
 }
 
 function update(changes) {
@@ -586,6 +582,12 @@ function bindEvents() {
   $("reset").addEventListener("click", () => {
     $("query").value = "";
     update(defaultFilters());
+  });
+  $("language").addEventListener("click", () => {
+    const next = language === "fr" ? "en" : "fr";
+    localStorage.setItem("language", next);
+    history.replaceState(null, "", `#${stateParams(next)}`);
+    location.reload();
   });
   $("tab-bugs").addEventListener("click", () => update({ view: "bugs" }));
   $("tab-upgrade").addEventListener("click", () => update({ view: "upgrade" }));
@@ -616,6 +618,11 @@ function bindEvents() {
   });
 }
 
+function localizedNotes(annotations) {
+  return Object.fromEntries(Object.entries(annotations).map(([key, notes]) =>
+    [key, notes.map((note) => ({ ...note, label: note.label[language], text: note.text[language] }))]));
+}
+
 async function start() {
   const [index, data, news] = await Promise.all(
     ["data/index.json", "data/bugs.json", "data/changes.json"].map((url) => fetch(url).then((response) => {
@@ -630,30 +637,33 @@ async function start() {
   updated = index.updated;
   schedule = index.schedule;
   recommended = index.recommended;
-  annotations = data.annotations.bugs;
-  versionAnnotations = data.annotations.versions;
+  annotations = localizedNotes(data.annotations.bugs);
+  versionAnnotations = localizedNotes(data.annotations.versions);
   bugs = data.bugs.map(hydrate);
   lifecycles = modelLifecycles(models, versions);
 
   for (const key of ["version", "from", "model", "category"]) {
     combos[key] = new Combobox($(key), (value) => update({ [key]: value }));
   }
-  combos.version.setOptions(versionOptions("Toutes les versions"));
-  combos.from.setOptions(versionOptions("Choisir"));
+  combos.version.setOptions(versionOptions(t("filter.allVersions")));
+  combos.from.setOptions(versionOptions(t("filter.choose")));
   combos.model.setOptions(modelOptions());
   combos.category.setOptions([
-    { value: "", label: "Toutes les catégories" },
+    { value: "", label: t("filter.allCategories") },
     ...categories.map((name, index) => ({ value: String(index), label: name })),
   ]);
 
   if (recommended.as_of) {
-    $("recommended-note").innerHTML = `La version recommandée et la fin du support ingénierie viennent de l'<a href="${escapeHtml(recommended.source)}" target="_blank" rel="noopener">article Fortinet</a> (état ${formatMonth(recommended.as_of)}), revu chaque trimestre. Un tiret signale un modèle absent de cet article, ou que les notes de la version recommandée ne listent pas.`;
+    $("recommended-note").innerHTML = t("hardware.recommended", { url: escapeHtml(recommended.source), month: formatMonth(recommended.as_of) });
   }
   const latest = [...versions].reverse().find((entry) => !entry.unavailable);
-  $("scope").textContent = `Bugs et correctifs de toutes les versions FortiOS, de ${versions[0].branch} à ${latest.branch}`;
-  $("stats").textContent = `${formatNumber(bugs.length)} bugs · ${formatNumber(versions.length)} versions · dernière version ${latest.v}`;
-  const moment = new Date(updated).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }).replace(" ", " à ");
-  $("updated").textContent = `Dernière mise à jour le ${moment} (heure locale)${schedule ? ` · mise à jour automatique : cron ${schedule.crons.join(" et ")} (${schedule.timezone})` : ""}`;
+  $("scope").textContent = t("page.scopeRange", { first: versions[0].branch, last: latest.branch });
+  $("stats").textContent = t("page.stats", { bugs: formatNumber(bugs.length), versions: formatNumber(versions.length), latest: latest.v });
+  const moment = new Date(updated);
+  $("updated").textContent = t("page.updated", {
+    date: moment.toLocaleDateString(locale),
+    time: moment.toLocaleTimeString(locale, { timeStyle: "short" }),
+  }) + (schedule ? t("page.schedule", { crons: schedule.crons.join(t("page.and")), zone: schedule.timezone }) : "");
   readHash();
   $("query").value = state.query;
   bindEvents();
@@ -662,6 +672,6 @@ async function start() {
 
 applyTheme(document.documentElement.dataset.theme);
 start().catch((error) => {
-  $("stats").textContent = "Impossible de charger les données.";
+  $("stats").textContent = t("page.failed");
   console.error(error);
 });

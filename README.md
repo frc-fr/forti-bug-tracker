@@ -14,6 +14,7 @@ informations sont fournies à titre indicatif : vérifiez toujours la documentat
 - Comparaison de deux versions
 - Informations par modèle, dont la version recommandée
 - Suivi des nouveautés, avec un flux RSS/Atom
+- Interface en français et en anglais
 
 ## Mise à jour automatique
 

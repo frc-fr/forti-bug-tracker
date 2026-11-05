@@ -3,7 +3,7 @@ from xml.etree import ElementTree
 
 from fortibugs.build import build_bugs, load_annotations, workflow_schedule
 from fortibugs.extract import diff_version, read_changes, write_changes
-from fortibugs.feed import ATOM, build_feed, latest_changes, title_of
+from fortibugs.feed import ATOM, build_feed, latest_changes, titles_of
 
 
 def observation(bug_id, status="known_new"):
@@ -43,9 +43,10 @@ def test_change_log_round_trip(tmp_path):
 def test_titles():
     documents = {"7.6.8": {"observations": [observation("1", "resolved"), observation("2"), observation("3")]}}
     change = {"date": "2026-10-22", "version": "7.6.8", "kind": "version", "bugs": []}
-    assert title_of(change, documents) == "FortiOS 7.6.8 publiée : 1 bug corrigé, 2 bugs connus"
+    assert titles_of(change, documents) == {"fr": "FortiOS 7.6.8 publiée : 1 bug corrigé, 2 bugs connus",
+                                             "en": "FortiOS 7.6.8 released: 1 fixed bug, 2 known bugs"}
     change = {"date": "2026-10-23", "version": "7.6.8", "kind": "known_added", "bugs": ["2", "3"]}
-    assert title_of(change, documents) == "FortiOS 7.6.8 : 2 bugs connus ajoutés aux notes"
+    assert titles_of(change, documents)["en"] == "FortiOS 7.6.8: 2 known bugs added to the notes"
 
 
 def test_feed_is_valid_atom_with_stable_ids():

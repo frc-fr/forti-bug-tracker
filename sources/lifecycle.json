@@ -1,0 +1,37 @@
+{
+  "source": "https://endoflife.date/fortios",
+  "branches": {
+    "8.0": {
+      "engineering": "2029-04-21",
+      "support": "2030-10-21"
+    },
+    "7.6": {
+      "engineering": "2028-07-25",
+      "support": "2030-01-25"
+    },
+    "7.4": {
+      "engineering": "2027-05-11",
+      "support": "2028-11-11"
+    },
+    "7.2": {
+      "engineering": "2025-03-31",
+      "support": "2026-09-30"
+    },
+    "7.0": {
+      "engineering": "2024-03-30",
+      "support": "2025-09-30"
+    },
+    "6.4": {
+      "engineering": "2023-03-31",
+      "support": "2024-09-30"
+    },
+    "6.2": {
+      "engineering": "2022-03-28",
+      "support": "2023-09-28"
+    },
+    "6.0": {
+      "engineering": "2021-03-29",
+      "support": "2022-09-29"
+    }
+  }
+}

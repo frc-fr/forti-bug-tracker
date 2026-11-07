@@ -164,7 +164,7 @@ def download_web_notes(manifest: Dict[str, dict], cache: Path, client: Client) -
             continue
         response = client.request("GET", PAGE_URL.format(version=version))
         urls = chapter_urls(response.text, version) if response.status_code == 200 else {}
-        if len(urls) < len(CHAPTERS):
+        if not all(name in urls for name in CHAPTERS):
             log.error("%s: web chapters not found", version)
             continue
         pages = {name: client.request("GET", DOCS_URL + url) for name, url in urls.items()}

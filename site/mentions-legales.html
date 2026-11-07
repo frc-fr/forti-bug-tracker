@@ -2,12 +2,10 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mentions légales · FortiOS Bug Tracker</title>
-  <script>
-    document.documentElement.dataset.theme = localStorage.getItem("theme")
-      || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-  </script>
+  <script src="theme.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -38,10 +36,19 @@
       88 Colin P. Kelly Jr. St., San Francisco, CA 94107, États-Unis</p>
 
     <h3>Origine des données</h3>
-    <p>Les données sont extraites automatiquement des Release Notes FortiOS publiées par Fortinet. Chaque bug renvoie vers la note officielle correspondante. Les versions recommandées et la fin du support ingénierie proviennent de l'article « Recommended release for FortiOS » de la communauté Fortinet. Quelques bugs et versions portent une annotation manuelle, avec un lien vers l'article Fortinet dont elle provient.</p>
+    <p>Les données sont extraites automatiquement des Release Notes FortiOS publiées par Fortinet. Chaque bug renvoie vers la note officielle correspondante. Les versions recommandées et la fin du support ingénierie proviennent de l'article « Recommended release for FortiOS » de la communauté Fortinet. Quelques bugs et versions portent une annotation manuelle, avec un lien vers l'article Fortinet dont elle provient. Les dates de support des branches FortiOS proviennent d'<a href="https://endoflife.date/fortios">endoflife.date</a> : cette source communautaire n'émane pas de Fortinet.</p>
     <p>Cet outil est indépendant. Il n'est ni affilié à Fortinet, ni approuvé par Fortinet. Fortinet, FortiGate et FortiOS sont des marques de Fortinet, Inc.</p>
     <p>Textes © Fortinet, Inc. Les descriptions de bugs et les informations issues de la documentation Fortinet restent la propriété de Fortinet, Inc.</p>
     <p>Cet outil d'entraide est gratuit, sans publicité et sans but commercial.</p>
+
+    <h3>Services et composants tiers</h3>
+    <p>Votre navigateur ne charge que les fichiers de ce site : aucun script, aucune police et aucun service tiers. Les éléments suivants servent uniquement à générer et à publier le site :</p>
+    <ul>
+      <li><a href="https://endoflife.date/">endoflife.date</a> : API des dates de support, interrogée lors de la mise à jour automatique. © endoflife.date contributors, <a href="https://github.com/endoflife-date/endoflife.date/blob/master/LICENSE">licence MIT</a>.</li>
+      <li>GitHub Actions, service de GitHub, Inc. : exécution de la mise à jour automatique.</li>
+      <li><a href="https://github.com/pymupdf/PyMuPDF">PyMuPDF</a> : lecture des Release Notes, licence GNU AGPL 3.0.</li>
+      <li><a href="https://github.com/psf/requests">Requests</a> : téléchargement des documents, licence Apache 2.0.</li>
+    </ul>
 
     <h3>Responsabilité</h3>
     <p>Les informations sont fournies à titre indicatif et sans garantie. L'extraction automatique peut comporter des erreurs, et les statuts sont déduits des notes : Fortinet ne publie ni la version d'introduction d'un bug, ni les dates de fin de vie dans ces documents. Vérifiez toujours la note officielle avant toute décision.</p>

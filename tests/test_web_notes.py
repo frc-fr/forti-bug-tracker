@@ -3,7 +3,7 @@ import json
 import pytest
 
 from fortibugs.extract import extract_all
-from fortibugs.web_notes import chapter_urls, parse_toc, parse_web_notes
+from fortibugs.web_notes import chapter_urls, parse_changes, parse_toc, parse_web_notes
 
 HEAD = "<tr><th><p>Bug ID</p></th><th><p>Description</p></th></tr>"
 
@@ -63,3 +63,9 @@ def test_the_navigation_reads_like_bookmarks():
     page = ('<nav class="toc__tree"><ul>' + link.format("Special notices") + '<ul class="toc__children" hidden>'
             + link.format("One") + "</ul>" + link.format("Resolved issues") + "</ul></nav>")
     assert parse_toc(page)[:2] == [(1, "Special notices", "/Special notices"), (2, "One", "/One")]
+
+
+def test_a_change_table_gives_the_same_rows_as_a_pdf():
+    page = "<table><tr><td>1104085</td><td>Increase the limit. It was lower.</td></tr><tr><td>Bug ID</td><td>Description</td></tr></table>"
+    changes = parse_changes({"table": page}, [["table", None, "/document/table"]])
+    assert changes == [["table", "1104085", "Increase the limit.", "/document/table"]]

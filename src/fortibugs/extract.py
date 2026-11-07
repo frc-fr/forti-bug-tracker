@@ -24,8 +24,10 @@ def write_version(path: Path, version: str, document) -> None:
         "branch": branch_of(version),
         "build": document.build,
         "released": document.released,
+        "pages": document.pages,
         "models": document.models,
         "notices": document.notices,
+        "changes": document.changes,
     }
     lines = ",\n".join(
         "  " + json.dumps(observation, ensure_ascii=False)

@@ -12,6 +12,19 @@
         },
         "url": "https://community.fortinet.com/fortigate-3/1gbe-sfp-ports-may-fail-to-forward-traffic-on-fortigate-1800f-1801f-after-upgrading-to-fortios-version-7-6-8-230759"
       }
+    ],
+    "1334339": [
+      {
+        "label": {
+          "fr": "Erreur 400 possible",
+          "en": "Possible error 400"
+        },
+        "text": {
+          "fr": "Depuis 7.4.13, des sites légitimes peuvent renvoyer « 400 Bad Request » avec une inspection proxy et un profil Deep Inspection : les requêtes HTTP/2 dont le cookie est réparti sur plusieurs en-têtes sont rejetées. Pour revenir au comportement précédent : set strict-web-check disable sous config web-proxy global. Fortinet annonce une amélioration pour 7.4.15.",
+          "en": "Since 7.4.13, legitimate sites can return \"400 Bad Request\" with proxy inspection and a Deep Inspection profile: HTTP/2 requests whose cookie is split across several headers are rejected. To restore the previous behavior: set strict-web-check disable under config web-proxy global. Fortinet announces an enhancement for 7.4.15."
+        },
+        "url": "https://community.fortinet.com/fortigate-3/after-upgrade-to-fortios-7-4-13-user-receives-error-400-bad-request-when-using-proxy-inspection-and-deep-packet-inspection-231131"
+      }
     ]
   },
   "versions": {
@@ -29,7 +42,7 @@
         "and_later": true
       }
     ],
-    "7.6.8": [
+    "7.6.6": [
       {
         "label": {
           "fr": "Interface web indisponible en Security Fabric",
@@ -39,7 +52,8 @@
           "fr": "Après le passage en 7.6.8, l'interface d'administration peut devenir indisponible : le FortiGate répond par des TCP reset aux requêtes HTTPS. Cela arrive quand un FortiGate leaf en 7.6.8 appartient à une Security Fabric dont le root est en 7.4.x. Mettre le root à la même version que le leaf, ou appliquer le contournement : config automation setting, set fabric-sync disable, end. L'article annonce un périmètre « 7.6.6 and above » et ne donne pas de numéro de bug.",
           "en": "After upgrading to 7.6.8, the administration interface may become unavailable: the FortiGate answers HTTPS requests with TCP resets. This happens when a leaf FortiGate on 7.6.8 belongs to a Security Fabric whose root runs 7.4.x. Upgrade the root to the same version as the leaf, or apply the workaround: config automation setting, set fabric-sync disable, end. The article states a scope of \"7.6.6 and above\" and gives no bug number."
         },
-        "url": "https://community.fortinet.com/fortigate-3/after-upgrading-to-fortios-7-6-8-gui-https-stops-working-231092"
+        "url": "https://community.fortinet.com/fortigate-3/after-upgrading-to-fortios-7-6-8-gui-https-stops-working-231092",
+        "and_later": true
       }
     ]
   }

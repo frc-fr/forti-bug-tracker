@@ -62,6 +62,8 @@ def build_index(documents: Dict[str, dict], manifest: Dict[str, dict]) -> dict:
                 "branch": branch_of(version),
                 "build": documents.get(version, {}).get("build"),
                 "released": documents.get(version, {}).get("released"),
+                "pages": documents.get(version, {}).get("pages", {}),
+                "changes": documents.get(version, {}).get("changes", []),
                 "revised": revision_date(manifest.get(version, {})),
                 "pdf": None if manifest.get(version, {}).get("unavailable") else manifest.get(version, {}).get("pdf_url"),
                 "web": bool(manifest.get(version, {}).get("unavailable")) and version in documents,
@@ -95,6 +97,13 @@ def build_recommended(path: Path, index: dict) -> dict:
     }
 
 
+def build_lifecycle(path: Path) -> dict:
+    """Support dates per branch; the browser compares them to its own date."""
+    if not path.exists():
+        return {"source": None, "branches": {}}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def known_annotations(annotations: Dict[str, List[dict]], known: set) -> Dict[str, List[dict]]:
     for key in set(annotations) - known:
         log.warning("annotation for an unknown bug or version: %s", key)
@@ -109,8 +118,9 @@ def load_annotations(path: Path, bugs: dict, index: dict) -> dict:
     if not path.exists():
         return {"bugs": {}, "versions": {}}
     annotations = json.loads(path.read_text(encoding="utf-8"))
+    changes = {row[1] for entry in index["versions"] for row in entry["changes"]}
     return {
-        "bugs": known_annotations(annotations["bugs"], {row[0] for row in bugs["bugs"]}),
+        "bugs": known_annotations(annotations["bugs"], {row[0] for row in bugs["bugs"]} | changes),
         "versions": known_annotations(annotations["versions"], {entry["v"] for entry in index["versions"]}),
     }
 
@@ -149,13 +159,14 @@ def build_bugs(documents: Dict[str, dict], index: dict) -> dict:
 
 
 def build_site(
-    extracted: Path, manifest_path: Path, changes_path: Path, recommended_path: Path,
+    extracted: Path, manifest_path: Path, changes_path: Path, recommended_path: Path, lifecycle_path: Path,
     annotations_path: Path, workflow_path: Path, sources: Path, dist: Path, base_url: str,
 ) -> dict:
     documents = load_extracted(extracted)
     manifest = load_manifest(manifest_path)
     index = build_index(documents, manifest)
     index["recommended"] = build_recommended(recommended_path, index)
+    index["lifecycle"] = build_lifecycle(lifecycle_path)
     index["schedule"] = workflow_schedule(workflow_path)
     bugs = build_bugs(documents, index)
     bugs["annotations"] = load_annotations(annotations_path, bugs, index)

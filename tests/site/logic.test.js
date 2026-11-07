@@ -1,7 +1,7 @@
 // Run with: node --test tests/site/logic.test.js
 const assert = require("node:assert");
 const test = require("node:test");
-const { tableText, upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, statusAt, hardwareMatch, searchTerms, matchesTerms, upgradeGroup } = require("../../site/logic.js");
+const { versionChanges, officialUrl, branchSupport, supportedBranches, tableText, upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, statusAt, hardwareMatch, searchTerms, matchesTerms, upgradeGroup } = require("../../site/logic.js");
 
 const versions = [
   { v: "7.4.1", branch: "7.4" }, { v: "7.4.2", branch: "7.4" },
@@ -137,4 +137,78 @@ test("upgrade notices: the target branch only, fresh when the current version la
 
 test("copied table: one line per row, cells free of tabs and line breaks", () => {
   assert.equal(tableText([["Bug", "Text"], ["1", "a\tb\nc"], ["2", null]]), "Bug\tText\n1\ta b c\n2\t");
+});
+
+const branches = { "7.2": { engineering: "2025-03-31", support: "2026-09-30" }, "7.6": { engineering: "2028-07-25", support: "2030-01-25" } };
+
+test("a branch is supported up to its last day", () => {
+  assert.equal(branchSupport("7.2", branches, "2026-09-30").supported, true);
+  assert.equal(branchSupport("7.2", branches, "2026-10-01").supported, false);
+});
+
+test("a branch older than every listed one is out of support", () => {
+  assert.equal(branchSupport("5.6", branches, "2026-11-07").supported, false);
+});
+
+test("a branch newer than the listed ones is supported, without date", () => {
+  const support = branchSupport("8.2", branches, "2026-11-07");
+  assert.equal(support.supported, true);
+  assert.equal(support.support, undefined);
+});
+
+test("the numbers of a branch compare as numbers", () => {
+  assert.equal(branchSupport("7.10", branches, "2026-11-07").supported, true);
+});
+
+test("a bug lists its supported branches, newest first", () => {
+  const dated = [
+    { branch: "7.2", support: { supported: false } },
+    { branch: "7.4", support: { supported: true } },
+    { branch: "7.6", support: { supported: true } },
+  ];
+  assert.deepEqual(supportedBranches([[0, "r", 1], [1, "k", 1], [2, "k", 1], [2, "r", 1]], dated), ["7.6", "7.4"]);
+  assert.deepEqual(supportedBranches([[0, "r", 1]], dated), []);
+});
+
+test("an official link opens the page of the PDF holding the fact", () => {
+  const entry = { pdf: "https://example.test/notes.pdf", page: "https://example.test/notes" };
+  assert.equal(officialUrl(entry, 5), "https://example.test/notes.pdf#page=5");
+  assert.equal(officialUrl(entry, undefined), "https://example.test/notes.pdf");
+  assert.equal(officialUrl({ ...entry, pdf: null }, 5), "https://example.test/notes");
+  assert.equal(officialUrl({ ...entry, pdf: null }, "/document/chapter"), "https://docs.fortinet.com/document/chapter");
+});
+
+test("only the changes the current version does not have are listed", () => {
+  const notes = [
+    { v: "7.4.1", branch: "7.4", changes: [["defaults", "100", "Old", 5]] },
+    { v: "7.4.2", branch: "7.4", changes: [["defaults", "100", "Old", 5], ["defaults", "200", "New", 6]] },
+    { v: "7.4.3", branch: "7.4", changes: [["defaults", "100", "Old", 5], ["defaults", "200", "New", 6]] },
+  ];
+  assert.deepEqual(versionChanges(notes, 0, 2).map(({ id, entry }) => [id, entry.v]), [["200", "7.4.2"]]);
+  assert.deepEqual(versionChanges(notes, 2, 0), []);
+});
+
+test("a change reworded under the same number is listed again", () => {
+  const notes = [
+    { v: "7.6.5", branch: "7.6", changes: [["defaults", "300", "No longer adjusted", 5]] },
+    { v: "7.6.8", branch: "7.6", changes: [["defaults", "300", "Adjusted again", 5]] },
+  ];
+  assert.deepEqual(versionChanges(notes, 0, 1).map(({ text }) => text), ["Adjusted again"]);
+});
+
+test("a change of another branch is not on the way to the target", () => {
+  const notes = [
+    { v: "7.4.1", branch: "7.4", changes: [] },
+    { v: "7.4.2", branch: "7.4", changes: [["defaults", "100", "Other branch", 5]] },
+    { v: "7.6.0", branch: "7.6", changes: [["defaults", "200", "Target branch", 6]] },
+  ];
+  assert.deepEqual(versionChanges(notes, 0, 2).map(({ id }) => id), ["200"]);
+});
+
+test("the same number in two chapters gives two changes", () => {
+  const notes = [
+    { v: "7.4.1", branch: "7.4", changes: [] },
+    { v: "7.4.2", branch: "7.4", changes: [["cli", "100", "Command", 5], ["gui", "100", "Page", 6]] },
+  ];
+  assert.deepEqual(versionChanges(notes, 0, 1).map(({ chapter }) => chapter), ["cli", "gui"]);
 });

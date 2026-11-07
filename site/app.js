@@ -8,20 +8,30 @@ const STATUSES = {
   fixed: t("status.fixed"),
   unknown: t("status.unknown"),
 };
+const SCOPES = {
+  all: { label: t("scope.all"), tone: "all" },
+  supported: { label: t("scope.supported"), tone: "fixed" },
+  ended: { label: t("scope.ended"), tone: "unknown" },
+};
 // Riskiest first: what an upgrade brings or leaves matters more than what it fixes.
 const UPGRADE_GROUPS = {
   all: { label: t("group.all"), tone: "all" },
+  defaults: { label: t("group.defaults"), tone: "change" },
   introduced: { label: t("group.introduced"), tone: "affected" },
   remaining: { label: t("group.remaining"), tone: "potential" },
   gained: { label: t("group.gained"), tone: "fixed" },
+  cli: { label: t("group.cli"), tone: "change" },
+  gui: { label: t("group.gui"), tone: "change" },
+  table: { label: t("group.table"), tone: "change" },
 };
+const CHANGE_GROUPS = ["defaults", "cli", "gui", "table"];
 
 const $ = (id) => document.getElementById(id);
 const defaultFilters = () => ({
   query: "", version: "", from: "", model: "", category: "",
-  hidden: new Set(["unknown"]), group: "all",
+  hidden: new Set(["unknown"]), group: "all", scope: "all",
 });
-const state = { view: "bugs", shown: PAGE_SIZE, hardware: "all", ...defaultFilters() };
+const state = { view: "bugs", shown: PAGE_SIZE, hardware: "all", reading: false, ...defaultFilters() };
 let versions = [];
 let models = [];
 let categories = [];
@@ -29,6 +39,7 @@ let bugs = [];
 let changes = [];
 let lifecycles = [];
 let recommended = { models: {} };
+let lifecycle = { source: null, branches: {} };
 let annotations = {};
 let versionAnnotations = {};
 let optionsModel = "";
@@ -160,11 +171,12 @@ class Combobox {
     let group = null;
     const items = [];
     this.visible.forEach((option, index) => {
+      const tone = option.tone ? ` ${option.tone}` : "";
       if (option.group && option.group !== group) {
         group = option.group;
-        items.push(`<li class="combo-group" role="presentation">${escapeHtml(group)}</li>`);
+        items.push(`<li class="combo-group${tone}" role="presentation">${escapeHtml(group)}</li>`);
       }
-      const classes = index === this.active ? "combo-option active" : "combo-option";
+      const classes = `combo-option${tone}${index === this.active ? " active" : ""}`;
       items.push(`<li id="${this.list.id}-${index}" class="${classes}" role="option" data-index="${index}" aria-selected="${option.value === this.current}">${escapeHtml(option.label)}</li>`);
     });
     this.list.innerHTML = items.join("") || `<li class="combo-empty">${t("filter.noResult")}</li>`;
@@ -188,7 +200,13 @@ function hydrate(row) {
   const notes = annotations[id] || [];
   const added = notes.map((note) => `${note.label} ${note.text}`).join(" ");
   const text = `${description} ${workaround || ""} ${added}`.toLowerCase();
-  return { id, category, description, workaround, cores, families, asics, events, fixes, notes, text };
+  const supported = supportedBranches(events, versions);
+  return { id, category, description, workaround, cores, families, asics, events, fixes, notes, text, supported };
+}
+
+/** The branch filter only makes sense on a search across all the versions. */
+function scopeApplies() {
+  return state.view === "bugs" && !state.version && Object.keys(lifecycle.branches).length > 0;
 }
 
 function versionIndex(value) {
@@ -200,17 +218,35 @@ function compute() {
   const version = versionIndex(state.version);
   const from = versionIndex(state.from);
   const upgrade = state.view === "upgrade" && version >= 0 && from >= 0;
+  const scoped = scopeApplies();
   const category = state.category === "" ? -1 : Number(state.category);
   const counts = {};
   const rows = [];
 
   if (state.view === "upgrade" && !upgrade) return { rows, counts };
+  const found = upgrade ? versionChanges(versions, from, version) : [];
+  const changed = new Set(found.map((change) => change.id));
+  if (category < 0) {
+    for (const change of found) {
+      if (!terms.every((term) => change.text.toLowerCase().includes(term) || term === change.id)) continue;
+      counts[change.chapter] = (counts[change.chapter] || 0) + 1;
+      counts.all = (counts.all || 0) + 1;
+      if (state.group === "all" || state.group === change.chapter) rows.push({ change, group: change.chapter });
+    }
+  }
   for (const bug of bugs) {
     if (category >= 0 && bug.category !== category) continue;
+    if (changed.has(bug.id)) continue;
     if (!matchesTerms(bug, terms)) continue;
     const hardware = hardwareMatch(bug, state.model);
     if (!hardware) continue;
 
+    if (scoped) {
+      const scope = bug.supported.length ? "supported" : "ended";
+      counts[scope] = (counts[scope] || 0) + 1;
+      counts.all = (counts.all || 0) + 1;
+      if (state.scope !== "all" && scope !== state.scope) continue;
+    }
     const status = version >= 0 ? statusAt(bug, version, versions) : null;
     if (upgrade) {
       const group = upgradeGroup(bug, from, version, versions);
@@ -228,8 +264,13 @@ function compute() {
   }
   const risk = Object.keys(UPGRADE_GROUPS);
   const cited = (row) => (row.hardware === "cited" ? 0 : 1);
-  rows.sort((a, b) => risk.indexOf(a.group) - risk.indexOf(b.group) || (state.model ? cited(a) - cited(b) : 0));
+  const ended = (row) => (scoped && !row.bug.supported.length ? 1 : 0);
+  rows.sort((a, b) => risk.indexOf(a.group) - risk.indexOf(b.group) || (state.model ? cited(a) - cited(b) : 0) || ended(a) - ended(b));
   return { rows, counts };
+}
+
+function officialLink(entry, page, label) {
+  return `<a href="${escapeHtml(officialUrl(entry, page))}" target="_blank" rel="noopener">${label}</a>`;
 }
 
 function highlight(text, terms) {
@@ -277,9 +318,7 @@ function renderHistory(bug) {
   const lines = [...bug.events].reverse().map(([version, status, page]) => {
     const entry = versions[version];
     const label = KNOWN_LABELS[status];
-    const link = entry.pdf
-      ? `<a href="${escapeHtml(entry.pdf)}#page=${page}" target="_blank" rel="noopener">${t("bug.officialPage", { page })}</a>`
-      : `<a href="${escapeHtml(entry.page)}" target="_blank" rel="noopener">${t("version.official")}</a>`;
+    const link = officialLink(entry, page, t(entry.pdf ? "bug.officialPage" : "version.official", { page }));
     return `<dt>${escapeHtml(entry.v)}</dt><dd>${label}, ${link}</dd>`;
   });
   return `<dl class="history">${lines.join("")}</dl>`;
@@ -294,7 +333,27 @@ function statusDetail(detail) {
   return detail ? `<span>${escapeHtml(t(`detail.${detail.id}`, detail))}</span>` : "";
 }
 
-function renderBug({ bug, status, hardware, group }, terms) {
+function supportTag(bug) {
+  if (!scopeApplies()) return "";
+  return bug.supported.length
+    ? `<span class="tag supported">${t("bug.supported", { branches: escapeHtml(bug.supported.join(", ")) })}</span>`
+    : `<span class="tag">${t("scope.ended")}</span>`;
+}
+
+/** A change has a summary and a link: only a note from an article gives it something to unfold. */
+function renderChange({ chapter, id, text, page, entry }, terms) {
+  const notes = annotations[id] || [];
+  const link = officialLink(entry, page, typeof page === "number" ? t("change.page", { version: escapeHtml(entry.v), page }) : escapeHtml(entry.v));
+  const head = `<span class="bug-id">${id}</span>
+    <span class="bug-text">${highlight(text, terms)}</span>
+    <span class="bug-meta"><span class="badge change">${t(`change.${chapter}`)}</span>${link}${notes.map((note) => `<span class="badge potential">${escapeHtml(note.label)}</span>`).join("")}</span>`;
+  return notes.length
+    ? `<details class="bug"><summary>${head}</summary><div class="bug-detail">${renderNotes({ notes }, terms)}</div></details>`
+    : `<div class="bug"><div class="bug-row">${head}</div></div>`;
+}
+
+function renderBug({ bug, status, hardware, group, change }, terms) {
+  if (change) return renderChange(change, terms);
   const badge = group
     ? `<span class="badge ${UPGRADE_GROUPS[group].tone}">${UPGRADE_GROUPS[group].label}</span>`
     : status
@@ -307,7 +366,7 @@ function renderBug({ bug, status, hardware, group }, terms) {
     <summary>
       <span class="bug-id">${bug.id}</span>
       <span class="bug-text">${highlight(bug.description, terms)}</span>
-      <span class="bug-meta">${badge}<span>${escapeHtml(categories[bug.category])}</span><span>${escapeHtml(fixesLabel(bug))}</span>${bug.notes.map((note) => `<span class="badge fixed">${escapeHtml(note.label)}</span>`).join("")}${hardwareTags(bug, hardware)}</span>
+      <span class="bug-meta">${badge}<span>${escapeHtml(categories[bug.category])}</span><span>${escapeHtml(fixesLabel(bug))}</span>${bug.notes.map((note) => `<span class="badge fixed">${escapeHtml(note.label)}</span>`).join("")}${supportTag(bug)}${hardwareTags(bug, hardware)}</span>
     </summary>
     <div class="bug-detail">${renderNotes(bug, terms)}<h3>${t("bug.appearance")}</h3>${renderAppearance(bug)}${workaround}<h3>${t("bug.history")}</h3>${renderHistory(bug)}</div>
   </details>`;
@@ -322,8 +381,15 @@ function renderChips(counts) {
   if (state.view === "upgrade") {
     const compared = version >= 0 && versionIndex(state.from) >= 0;
     $("chips").innerHTML = compared
-      ? Object.entries(UPGRADE_GROUPS).map(([key, { label, tone }]) => tile("group", key, label, tone, counts[key], state.group === key)).join("")
+      ? Object.entries(UPGRADE_GROUPS)
+        // No count on notes whose chapter cannot be read: zero would claim there is no change.
+        .filter(([key]) => !CHANGE_GROUPS.includes(key) || counts[key] || state.group === key)
+        // The order of the tiles helps finding one; the list keeps the riskiest first.
+        .sort(([a, { label: first }], [b, { label: second }]) => (b === "all") - (a === "all") || first.localeCompare(second, locale))
+        .map(([key, { label, tone }]) => tile("group", key, label, tone, counts[key], state.group === key)).join("")
       : "";
+  } else if (scopeApplies()) {
+    $("chips").innerHTML = Object.entries(SCOPES).map(([key, { label, tone }]) => tile("scope", key, label, tone, counts[key], state.scope === key)).join("");
   } else if (version >= 0) {
     $("chips").innerHTML = Object.entries(STATUSES).map(([key, label]) => tile("status", key, label, key, counts[key], !state.hidden.has(key))).join("");
   } else {
@@ -357,15 +423,44 @@ function renderNotices() {
   $("notices").innerHTML = notices.map((text) => `<p class="notice">${escapeHtml(text)}</p>`).join("") + articles.join("");
 }
 
+function supportBadge(support) {
+  if (!Object.keys(lifecycle.branches).length) return "";
+  if (!support.support && support.supported) return "";
+  const date = support.support && formatDate(support.support);
+  const [tone, text] = !support.support ? ["unknown", t("support.ended")]
+    : support.supported ? ["fixed", t("support.until", { date })] : ["unknown", t("support.endedOn", { date })];
+  return `<a class="badge ${tone}" href="${escapeHtml(lifecycle.source)}" target="_blank" rel="noopener">${text}</a>`;
+}
+
+/** Shortcuts to the latest version of each supported branch. */
+function renderSupport() {
+  const latest = new Map(versions.filter((entry) => !entry.unavailable).map((entry) => [entry.branch, entry]));
+  const branches = [...latest.values()].filter((entry) => entry.support.supported).reverse();
+  const shown = ["bugs", "upgrade"].includes(state.view) && Object.keys(lifecycle.branches).length > 0;
+  $("support").hidden = !shown;
+  if (!shown) return;
+  const links = branches.map((entry) => {
+    const params = stateParams();
+    params.set("version", entry.v);
+    const date = entry.support.support ? `<small>${t("support.date", { date: formatDate(entry.support.support) })}</small>` : "";
+    const current = entry.v === state.version ? ' aria-current="true"' : "";
+    return `<a class="support-branch" href="#${escapeHtml(params.toString())}"${current}><strong>${escapeHtml(entry.v)}</strong>${date}</a>`;
+  });
+  $("support").innerHTML = `<h2>${t("support.title")}</h2><div class="support-list">${links.join("")}</div>
+    <p class="muted">${t("support.note", { url: escapeHtml(lifecycle.source) })}</p>`;
+}
+
 function renderVersionInfo() {
   const entry = versions[versionIndex(state.version)];
   const parts = [];
   if (entry && !entry.unavailable) {
     parts.push(`FortiOS ${escapeHtml(entry.v)}`);
-    if (entry.build) parts.push(`build ${escapeHtml(entry.build)}`);
-    if (entry.released) parts.push(t("version.released", { date: formatDate(entry.released) }));
-    if (entry.revised) parts.push(t("version.revised", { date: formatDate(entry.revised) }));
-    parts.push(`<a href="${escapeHtml(entry.pdf || entry.page)}" target="_blank" rel="noopener">${t("version.official")}</a>`);
+    if (entry.build) parts.push(officialLink(entry, entry.pages.build, `build ${escapeHtml(entry.build)}`));
+    if (entry.released) parts.push(officialLink(entry, entry.pages.changes, t("version.released", { date: formatDate(entry.released) })));
+    if (entry.revised) parts.push(officialLink(entry, entry.pages.changes, t("version.revised", { date: formatDate(entry.revised) })));
+    const support = supportBadge(entry.support);
+    if (support) parts.push(support);
+    parts.push(officialLink(entry, entry.pages.changes, t("version.official")));
   }
   $("version-info").innerHTML = parts.map((part) => `<span>${part}</span>`).join("");
 }
@@ -383,7 +478,9 @@ function noticeItem(notice) {
 function renderUpgradeNotices() {
   const from = versionIndex(state.from);
   const to = versionIndex(state.version);
-  const items = state.view === "upgrade" && from >= 0 && to >= 0 ? upgradeNotices(notices, versions, from, to) : [];
+  const items = (state.view === "upgrade" && from >= 0 && to >= 0 ? upgradeNotices(notices, versions, from, to) : [])
+    // A chapter read line by line is in the list; one without bug numbers can only be linked.
+    .filter((item) => !versions[versionIndex(item.version)].changes.some(([chapter]) => chapter === item.chapter));
   if (!items.length) {
     $("upgrade-notices").innerHTML = "";
     return;
@@ -397,7 +494,7 @@ function renderUpgradeNotices() {
   const repeated = others.length
     ? `<details><summary>${t("reading.repeated", { count: others.length, version: escapeHtml(state.from) })}</summary><ul>${others.map(noticeItem).join("")}</ul></details>`
     : "";
-  $("upgrade-notices").innerHTML = `<details class="reading" open><summary>${t("reading.title", { count: fresh.length })}</summary>
+  $("upgrade-notices").innerHTML = `<details class="reading"${state.reading ? " open" : ""}><summary>${t("reading.title", { count: fresh.length })}</summary>
     <p class="muted">${t("reading.help", { branch: escapeHtml(versions[to].branch) })}</p><div class="reading-chapters">${chapters}</div>${repeated}</details>`;
 }
 
@@ -438,19 +535,21 @@ function latestCard(title, field) {
 function pdfLine(version) {
   const entry = versions.find((candidate) => candidate.v === version);
   if (!entry || !entry.pdf || !entry.revised) return "";
-  return `<p class="news-pdf version-info"><span>${t("news.revised", { date: formatDate(entry.revised) })}</span> <a href="${escapeHtml(entry.pdf)}" target="_blank" rel="noopener">${t("version.official")}</a></p>`;
+  return `<p class="news-pdf version-info"><span>${t("news.revised", { date: formatDate(entry.revised) })}</span> ${officialLink(entry, entry.pages.changes, t("version.official"))}</p>`;
 }
 
 function bugTable(rows) {
   const header = ["copy.bug", "copy.status", "copy.category", "copy.description", "copy.workaround", "copy.fix"].map((key) => t(key));
-  return [header, ...rows.map(({ bug, status, group }) => [
+  return [header, ...rows.map(({ bug, status, group, change }) => (change ? [
+    change.id, UPGRADE_GROUPS[group].label, "", change.text, "", "",
+  ] : [
     bug.id,
     group ? UPGRADE_GROUPS[group].label : status ? STATUSES[status.key] : "",
     categories[bug.category],
     bug.description,
     bug.workaround,
     fixesLabel(bug),
-  ])];
+  ]))];
 }
 
 function hardwareTable(entries) {
@@ -563,6 +662,7 @@ function renderNews() {
 }
 
 function render() {
+  renderSupport();
   if (state.view === "news") {
     renderNews();
     return;
@@ -583,7 +683,8 @@ function render() {
   const waiting = state.view === "upgrade" && (!state.from || !state.version);
   $("count").textContent = waiting
     ? t("count.choose")
-    : rows.length > state.shown ? t("count.partial", { count: formatNumber(rows.length), shown: formatNumber(state.shown) })
+    : state.view === "upgrade" && CHANGE_GROUPS.includes(state.group) ? t("count.changes", { label: UPGRADE_GROUPS[state.group].label, count: formatNumber(rows.length) })
+      : rows.length > state.shown ? t("count.partial", { count: formatNumber(rows.length), shown: formatNumber(state.shown) })
       : rows.length > 1 ? t("count.many", { count: formatNumber(rows.length) }) : t(rows.length ? "count.one" : "count.none");
   $("results").innerHTML = rows.slice(0, state.shown).map((row) => renderBug(row, terms)).join("");
   $("more").hidden = rows.length <= state.shown;
@@ -601,6 +702,7 @@ function stateParams(shown = language) {
   for (const key of ["query", "version", "from", "model", "category"]) {
     if (state[key]) params.set(key, state[key]);
   }
+  if (state.scope !== "all") params.set("scope", state.scope);
   return params;
 }
 
@@ -614,6 +716,7 @@ function readHash() {
   for (const key of ["query", "version", "from", "model", "category"]) {
     state[key] = params.get(key) || "";
   }
+  state.scope = ["supported", "ended"].includes(params.get("scope")) ? params.get("scope") : "all";
 }
 
 function syncControls() {
@@ -644,12 +747,18 @@ function applyTheme(theme) {
   $("theme").textContent = t(theme === "dark" ? "theme.light" : "theme.dark");
 }
 
+function branchLabel({ branch, support }) {
+  if (!Object.keys(lifecycle.branches).length) return `FortiOS ${branch}`;
+  if (!support.supported) return t("option.branchEnded", { branch });
+  return support.support ? t("option.branchUntil", { branch, date: formatDate(support.support) }) : `FortiOS ${branch}`;
+}
+
 function versionOptions(placeholder) {
   const advice = recommended.models[state.model];
   const options = [...versions].reverse().map((entry) => {
     const suffix = entry.unavailable ? t("option.unavailable") : entry.build ? ` (build ${entry.build})` : "";
     const mark = advice && advice.release === entry.v ? t("option.recommended") : "";
-    return { value: entry.v, label: `${entry.v}${suffix}${mark}`, group: `FortiOS ${entry.branch}` };
+    return { value: entry.v, label: `${entry.v}${suffix}${mark}`, group: branchLabel(entry), tone: entry.support.supported ? "" : "ended" };
   });
   return [{ value: "", label: placeholder }, ...options];
 }
@@ -710,6 +819,8 @@ function bindEvents() {
     if (!chip) return;
     if (chip.dataset.hardware) {
       update({ hardware: chip.dataset.hardware });
+    } else if (chip.dataset.scope) {
+      update({ scope: chip.dataset.scope });
     } else if (chip.dataset.group) {
       update({ group: chip.dataset.group });
     } else {
@@ -718,6 +829,10 @@ function bindEvents() {
       update({});
     }
   });
+  // toggle does not bubble, and a new render must not fold what the reader opened.
+  $("upgrade-notices").addEventListener("toggle", (event) => {
+    if (event.target.classList.contains("reading")) state.reading = event.target.open;
+  }, true);
   $("copy").addEventListener("click", async () => {
     const table = copiedTable();
     await copyText(tableText(table));
@@ -750,7 +865,9 @@ async function start() {
       return response.json();
     })),
   );
-  versions = index.versions;
+  lifecycle = index.lifecycle;
+  const today = new Date().toISOString().slice(0, 10);
+  versions = index.versions.map((entry) => ({ ...entry, support: branchSupport(entry.branch, lifecycle.branches, today) }));
   models = index.models;
   categories = data.categories;
   changes = news;

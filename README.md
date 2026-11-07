@@ -11,6 +11,7 @@ informations sont fournies à titre indicatif : vérifiez toujours la documentat
 ## Fonctionnalités
 
 - Recherche par numéro de bug ou mots-clés, par version et par matériel
+- Mise en avant des branches supportées, sans masquer les autres
 - Comparaison de deux versions, avec les chapitres à lire avant la mise à niveau
 - Informations par modèle, dont la version recommandée
 - Suivi des nouveautés, avec un flux RSS/Atom
@@ -33,6 +34,10 @@ limiter les requêtes, tous les documents ne sont pas vérifiés à chaque passa
 - Les branches dormantes ne sont vérifiées que le lundi et lors d'un lancement manuel.
 - Les nouvelles versions sont détectées à chaque passage, sur toutes les branches.
 - Une branche dormante révisée redevient active d'elle-même.
+
+Les dates de support des branches viennent de l'[API endoflife.date](https://endoflife.date/fortios),
+une source communautaire. Elles sont récupérées pendant ce traitement et votre navigateur ne
+contacte pas ce service.
 
 ## Liens utiles chez Fortinet
 

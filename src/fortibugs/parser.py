@@ -69,6 +69,14 @@ class Section:
     category: Optional[str] = None
 
 
+MAX_SUMMARY = 220
+CHANGE_CHAPTERS = ("defaults", "cli", "gui", "table")
+VULNERABILITY_ID = re.compile(r"\b(CVE|CWE)\b")
+CHAPTER_FURNITURE = re.compile(
+    r"^(FortiOS .*Release Notes|Release Notes|Fortinet( Technologies)?,? Inc\.?,?|Changes in .{0,30}|Bug ID|Description|\d{1,3}|)$"
+)
+
+
 @dataclass
 class Document:
     build: Optional[str]
@@ -78,6 +86,8 @@ class Document:
     skipped_cve_rows: int
     warnings: List[str]
     notices: List[list] = field(default_factory=list)
+    pages: Dict[str, int] = field(default_factory=dict)
+    changes: List[list] = field(default_factory=list)
 
 
 def page_lines(page: fitz.Page) -> List[List[Line]]:
@@ -305,20 +315,18 @@ def extract_models(doc: fitz.Document) -> List[str]:
     return []
 
 
-def extract_build(doc: fitz.Document) -> Optional[str]:
-    for number in range(min(12, len(doc))):
-        match = re.search(r"\bbuild\s*(\d{3,4})\b", doc[number].get_text())
+def find_in_pages(doc: fitz.Document, pattern: str, limit: int) -> Tuple[Optional[str], Optional[int]]:
+    """First match in the opening pages, with its page number as a PDF link expects it."""
+    for number in range(min(limit, len(doc))):
+        match = re.search(pattern, doc[number].get_text())
         if match:
-            return match.group(1)
-    return None
+            return match.group(1), number + 1
+    return None, None
 
 
-def extract_release_date(doc: fitz.Document) -> Optional[str]:
-    for number in range(min(10, len(doc))):
-        match = re.search(r"(\d{4}-\d{2}-\d{2})\s+Initial", doc[number].get_text())
-        if match:
-            return match.group(1)
-    return None
+def change_log_page(doc: fitz.Document) -> Optional[int]:
+    """The chapter holding the release and revision dates, whatever their format."""
+    return next((page for _, title, page in doc.get_toc() if title.strip().lower() == "change log"), None)
 
 
 def chapter_notices(toc: List[tuple]) -> List[list]:
@@ -360,6 +368,37 @@ def extract_notices(doc: fitz.Document) -> List[list]:
         if notice[1] and notice[1].endswith("..."):
             notice[1] = full_title(doc, notice[1], notice[2])
     return notices
+
+
+def first_sentence(text: str) -> str:
+    """The summary of a change: its full text can run over a page."""
+    text = re.sub(r"^[l•]\s+", "", " ".join(text.split()))
+    sentence = re.split(r"(?<=[.!?])\s+(?=[A-Z]|config\b)", text)[0]
+    if len(sentence) <= MAX_SUMMARY:
+        return sentence
+    return sentence[:MAX_SUMMARY].rsplit(" ", 1)[0] + "…"
+
+
+def chapter_rows(doc: fitz.Document, chapter: str, notices: List[list]) -> List[list]:
+    """List the [chapter, bug ID, summary, page] of a table of changes."""
+    start = next((notice[2] for notice in notices if notice[0] == chapter), None)
+    if not isinstance(start, int):
+        return []
+    following = [page for level, _, page in doc.get_toc() if level == 1 and page > start]
+    rows: List[list] = []
+    for number in range(start, min(following or [start + 1])):
+        for line in doc[number - 1].get_text().splitlines():
+            text = line.strip()
+            if re.fullmatch(r"\d{6,7}", text):
+                rows.append([text, "", number])
+            elif rows and not CHAPTER_FURNITURE.match(text):
+                rows[-1][1] += f" {text}"
+    summaries = [[chapter, bug, first_sentence(text), page] for bug, text, page in rows]
+    return [row for row in summaries if not VULNERABILITY_ID.search(row[2])]
+
+
+def extract_changes(doc: fitz.Document, notices: List[list]) -> List[list]:
+    return [row for chapter in CHANGE_CHAPTERS for row in chapter_rows(doc, chapter, notices)]
 
 
 def title_pattern(title: str) -> str:
@@ -407,12 +446,17 @@ def parse_pdf(path: Path) -> Document:
             if missing:
                 warnings.append(f"{section.title}: {len(missing)} IDs not parsed: {missing[:5]}")
 
+    build, build_page = find_in_pages(doc, r"\bbuild\s*(\d{3,4})\b", 12)
+    notices = extract_notices(doc)
+    released, released_page = find_in_pages(doc, r"(\d{4}-\d{2}-\d{2})\s+Initial", 10)
     return Document(
-        build=extract_build(doc),
-        released=extract_release_date(doc),
+        build=build,
+        released=released,
         models=extract_models(doc),
         observations=observations,
         skipped_cve_rows=skipped,
         warnings=warnings,
-        notices=extract_notices(doc),
+        notices=notices,
+        changes=extract_changes(doc, notices),
+        pages={"build": build_page, "changes": change_log_page(doc) or released_page},
     )

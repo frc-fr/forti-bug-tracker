@@ -1,5 +1,7 @@
 """Checks on the real PDFs, when FORTIBUGS_CACHE points to the downloaded corpus."""
+import json
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -31,3 +33,9 @@ def test_words_keep_their_spaces():
         pytest.skip("7.6.4 not in the corpus")
     descriptions = {o["bug_id"]: o["description"] for o in parse_pdf(pdf).observations}
     assert "HW log(ps) rate" in descriptions["1143144"]
+
+
+def test_no_change_summary_names_a_vulnerability():
+    for path in Path("data/extracted").glob("*.json"):
+        for _, bug, text, _ in json.loads(path.read_text(encoding="utf-8")).get("changes", []):
+            assert not re.search(r"\bCVE|\bCWE", text), bug

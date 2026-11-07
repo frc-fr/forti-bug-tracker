@@ -77,9 +77,17 @@ def test_annotations_keep_known_bugs_only(tmp_path):
     path = tmp_path / "annotations.json"
     note = [{"label": "Note"}]
     path.write_text(json.dumps({"bugs": {"100000": note, "999999": note}, "versions": {"7.6.8": note, "9.9.9": note}}))
-    index = {"versions": [{"v": "7.6.8"}]}
+    index = {"versions": [{"v": "7.6.8", "changes": []}]}
     assert load_annotations(path, {"bugs": [["100000"]]}, index) == {"bugs": {"100000": note}, "versions": {"7.6.8": note}}
     assert load_annotations(tmp_path / "missing.json", {"bugs": []}, index) == {"bugs": {}, "versions": {}}
+
+
+def test_an_annotation_can_target_a_change(tmp_path):
+    path = tmp_path / "annotations.json"
+    note = [{"label": "Note"}]
+    path.write_text(json.dumps({"bugs": {"200000": note}, "versions": {}}))
+    index = {"versions": [{"v": "7.6.8", "changes": [["defaults", "200000", "Changed", 13]]}]}
+    assert load_annotations(path, {"bugs": []}, index)["bugs"] == {"200000": note}
 
 
 def test_schedule_comes_from_the_workflow(tmp_path):

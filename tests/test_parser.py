@@ -2,7 +2,7 @@
 import fitz
 import pytest
 
-from fortibugs.parser import chapter_notices, clean_category, clean_description, join_lines, parse_pdf
+from fortibugs.parser import chapter_notices, clean_category, clean_description, find_in_pages, first_sentence, join_lines, parse_pdf
 
 ID_X, TEXT_X = 62, 137
 
@@ -215,3 +215,24 @@ def test_notices_keep_sections_and_version_specific_chapters():
     ]
     assert chapter_notices(toc) == [
         ["upgrade", "Downgrading", 3], ["upgrade", "A misplaced section", 4], ["table", None, 5]]
+
+
+class FakePage:
+    def __init__(self, text):
+        self.text = text
+
+    def get_text(self):
+        return self.text
+
+
+def test_a_fact_keeps_the_page_a_pdf_link_expects():
+    pages = [FakePage("Contents"), FakePage("2026-10-22 Initial release."), FakePage("build 1778")]
+    assert find_in_pages(pages, r"(\d{4}-\d{2}-\d{2})\s+Initial", 10) == ("2026-10-22", 2)
+    assert find_in_pages(pages, r"\bbuild\s*(\d{3,4})\b", 2) == (None, None)
+
+
+def test_a_change_is_summed_up_by_its_first_sentence():
+    assert first_sentence("l Inline IPS is now disabled. It was enabled.") == "Inline IPS is now disabled."
+    assert first_sentence("Change the default. config system interface") == "Change the default."
+    assert first_sentence("Use e.g. this value") == "Use e.g. this value"
+    assert first_sentence("word " * 100).endswith("…")

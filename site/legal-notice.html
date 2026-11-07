@@ -2,12 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Legal notice · FortiOS Bug Tracker</title>
-  <script>
-    document.documentElement.dataset.theme = localStorage.getItem("theme")
-      || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-  </script>
+  <script src="theme.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -39,10 +37,19 @@
       88 Colin P. Kelly Jr. St., San Francisco, CA 94107, United States</p>
 
     <h3>Data origin</h3>
-    <p>The data is automatically extracted from the FortiOS Release Notes published by Fortinet. Each bug links to the matching official note. Recommended releases and the end of engineering support come from the "Recommended release for FortiOS" article of the Fortinet community. A few bugs and versions carry a manual annotation, with a link to the Fortinet article it comes from.</p>
+    <p>The data is automatically extracted from the FortiOS Release Notes published by Fortinet. Each bug links to the matching official note. Recommended releases and the end of engineering support come from the "Recommended release for FortiOS" article of the Fortinet community. A few bugs and versions carry a manual annotation, with a link to the Fortinet article it comes from. Support dates of the FortiOS branches come from <a href="https://endoflife.date/fortios">endoflife.date</a>: this community source does not come from Fortinet.</p>
     <p>This tool is independent. It is neither affiliated with nor endorsed by Fortinet. Fortinet, FortiGate and FortiOS are trademarks of Fortinet, Inc.</p>
     <p>Texts © Fortinet, Inc. Bug descriptions and information taken from Fortinet documentation remain the property of Fortinet, Inc.</p>
     <p>This community tool is free, without advertising and non-commercial.</p>
+
+    <h3>Third-party services and components</h3>
+    <p>Your browser only loads the files of this site: no third-party script, font or service. The following are only used to generate and publish the site:</p>
+    <ul>
+      <li><a href="https://endoflife.date/">endoflife.date</a>: API of the support dates, queried during the automatic update. © endoflife.date contributors, <a href="https://github.com/endoflife-date/endoflife.date/blob/master/LICENSE">MIT license</a>.</li>
+      <li>GitHub Actions, a service of GitHub, Inc.: runs the automatic update.</li>
+      <li><a href="https://github.com/pymupdf/PyMuPDF">PyMuPDF</a>: reads the Release Notes, GNU AGPL 3.0 license.</li>
+      <li><a href="https://github.com/psf/requests">Requests</a>: downloads the documents, Apache 2.0 license.</li>
+    </ul>
 
     <h3>Liability</h3>
     <p>The information is provided for guidance only and without warranty. Automatic extraction may contain errors, and statuses are inferred from the notes: Fortinet publishes neither the version that introduced a bug nor end-of-life dates in these documents. Always check the official note before making any decision.</p>

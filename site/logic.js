@@ -28,6 +28,25 @@ function statusAt(bug, index, versions) {
   return { key: "unknown", detail: { id: "noMention" } };
 }
 
+function compareBranches(a, b) {
+  const [majorA, minorA] = a.split(".").map(Number);
+  const [majorB, minorB] = b.split(".").map(Number);
+  return majorA - majorB || minorA - minorB;
+}
+
+/** Support on a date. Older than every listed branch: ended. Newer: not dated yet, so supported. */
+function branchSupport(branch, branches, today) {
+  const dates = branches[branch];
+  if (dates) return { ...dates, supported: today <= dates.support };
+  return { supported: Object.keys(branches).some((listed) => compareBranches(branch, listed) > 0) };
+}
+
+/** Branches where the notes mention a bug and which are still supported, newest first. */
+function supportedBranches(events, versions) {
+  const branches = new Set(events.map(([version]) => versions[version]).filter((entry) => entry.support.supported).map((entry) => entry.branch));
+  return [...branches].sort(compareBranches).reverse();
+}
+
 function modelFamily(core) {
   if (core.startsWith("VM")) return "VM";
   const series = core.match(/^([67])\d{3}/);
@@ -106,11 +125,33 @@ function upgradeNotices(notices, versions, from, to) {
   return [...found.values()];
 }
 
+/** Changes of the target branch up to the target, not already in the current version. */
+function versionChanges(versions, from, to) {
+  if (from >= to) return [];
+  const known = new Set(versions[from].changes.map(([chapter, id, text]) => `${chapter} ${id} ${text}`));
+  const found = new Map();
+  versions.slice(from + 1, to + 1).filter((entry) => entry.branch === versions[to].branch).forEach((entry) => {
+    for (const [chapter, id, text, page] of entry.changes) {
+      // The notes repeat a change: keep where it appeared, unless Fortinet rewords it later.
+      const key = `${chapter} ${id}`;
+      if (!known.has(`${key} ${text}`) && (found.get(key) || {}).text !== text) found.set(key, { chapter, id, text, page, entry });
+    }
+  });
+  return [...found.values()];
+}
+
+/** Link to the page of the PDF holding a fact; a web note has no pages, only its chapters. */
+function officialUrl(entry, page) {
+  if (typeof page === "string") return `https://docs.fortinet.com${page}`;
+  if (!entry.pdf) return entry.page;
+  return page ? `${entry.pdf}#page=${page}` : entry.pdf;
+}
+
 /** Tab-separated text, which spreadsheets and mail clients paste as a table. */
 function tableText(rows) {
   return rows.map((row) => row.map((cell) => String(cell ?? "").replace(/\s+/g, " ").trim()).join("\t")).join("\n");
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { tableText, upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, statusAt, modelFamily, hardwareMatch, searchTerms, matchesTerms, upgradeGroup };
+  module.exports = { versionChanges, officialUrl, branchSupport, supportedBranches, tableText, upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, statusAt, modelFamily, hardwareMatch, searchTerms, matchesTerms, upgradeGroup };
 }

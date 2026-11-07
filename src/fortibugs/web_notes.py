@@ -3,13 +3,21 @@ import html
 import re
 from typing import Dict, List
 
-from .parser import MODEL, Document, Row, chapter_notices, to_observations
+from .parser import CHANGE_CHAPTERS, MODEL, VULNERABILITY_ID, Document, Row, chapter_notices, first_sentence, to_observations
 
 CHAPTERS = {
     "known": "known-issues",
     "resolved": "resolved-issues",
     "intro": "introduction-and-supported-models",
     "changes": "change-log",
+}
+
+# Present only in the versions that change something.
+OPTIONAL_CHAPTERS = {
+    "defaults": "changes-in-default-behavior",
+    "cli": "changes-in-cli",
+    "gui": "changes-in-gui-behavior",
+    "table": "changes-in-table-size",
 }
 
 HEADING_OR_ROW = re.compile(r'<h([23]) id="[^"]*">(.*?)</h\1>|<tr[^>]*>(.*?)</tr>', re.S)
@@ -25,7 +33,7 @@ def text_of(fragment: str) -> str:
 def chapter_urls(page: str, version: str) -> Dict[str, str]:
     """Find the chapters in the navigation of a version page; their numbers are not stable."""
     urls = {}
-    for name, slug in CHAPTERS.items():
+    for name, slug in {**CHAPTERS, **OPTIONAL_CHAPTERS}.items():
         match = re.search(rf'href="(/document/fortigate/{re.escape(version)}/fortios-release-notes/\d+/{slug})"', page)
         if match:
             urls[name] = match.group(1)
@@ -51,6 +59,20 @@ def parse_rows(page: str, known: bool) -> List[Row]:
         if len(cells) == 2 and BUG_ID.search(text_of(cells[0])):
             rows.append(Row(BUG_ID.findall(text_of(cells[0])), None, status, category, [text_of(cells[1])]))
     return rows
+
+
+def parse_changes(pages: Dict[str, str], notices: List[list]) -> List[list]:
+    """The same rows as a PDF, with the path of the chapter in place of a page number."""
+    paths = {notice[0]: notice[2] for notice in notices}
+    changes = []
+    for chapter in CHANGE_CHAPTERS:
+        for match in HEADING_OR_ROW.finditer(pages.get(chapter, "")):
+            cells = CELL.findall(match.group(3) or "")
+            if len(cells) == 2 and BUG_ID.search(text_of(cells[0])):
+                summary = first_sentence(text_of(cells[1]))
+                if not VULNERABILITY_ID.search(summary):
+                    changes.append([chapter, BUG_ID.search(text_of(cells[0])).group(0), summary, paths.get(chapter)])
+    return changes
 
 
 def parse_models(page: str) -> List[str]:
@@ -87,5 +109,6 @@ def parse_web_notes(pages: Dict[str, str]) -> Document:
         raise ValueError(f"unexpected web notes: {len(observations)} bugs, {len(models)} models, {warnings}")
     build = re.search(r"\bbuild\s*(\d{3,4})\b", text_of(pages["intro"]))
     released = re.search(r"(\d{4}-\d{2}-\d{2})\s+Initial", text_of(pages["changes"]))
+    notices = chapter_notices(parse_toc(pages["intro"]))
     return Document(build.group(1) if build else None, released.group(1) if released else None,
-                    models, observations, skipped, [], chapter_notices(parse_toc(pages["intro"])))
+                    models, observations, skipped, [], notices, changes=parse_changes(pages, notices))

@@ -37,6 +37,8 @@ let models = [];
 let categories = [];
 let bugs = [];
 let changes = [];
+// The changes announced under each ID, for the bugs sharing it.
+let changesOf = new Map();
 let lifecycles = [];
 let recommended = { models: {} };
 let lifecycle = { source: null, branches: {} };
@@ -199,9 +201,10 @@ function hydrate(row) {
   }
   const notes = annotations[id] || [];
   const added = notes.map((note) => `${note.label} ${note.text}`).join(" ");
-  const text = `${description} ${workaround || ""} ${added}`.toLowerCase();
+  const changes = changesOf.get(id) || [];
+  const text = `${description} ${workaround || ""} ${added} ${changes.map((change) => change.text).join(" ")}`.toLowerCase();
   const supported = supportedBranches(events, versions);
-  return { id, category, description, workaround, cores, families, asics, events, fixes, notes, text, supported };
+  return { id, category, description, workaround, cores, families, asics, events, fixes, notes, text, supported, changes };
 }
 
 /** The branch filter only makes sense on a search across all the versions. */
@@ -217,26 +220,15 @@ function compute() {
   const terms = searchTerms(state.query);
   const version = versionIndex(state.version);
   const from = versionIndex(state.from);
-  const upgrade = state.view === "upgrade" && version >= 0 && from >= 0;
-  const scoped = scopeApplies();
   const category = state.category === "" ? -1 : Number(state.category);
+  if (state.view === "upgrade") {
+    return version >= 0 && from >= 0 ? computeUpgrade(terms, from, version, category) : { rows: [], counts: {} };
+  }
+  const scoped = scopeApplies();
   const counts = {};
   const rows = [];
-
-  if (state.view === "upgrade" && !upgrade) return { rows, counts };
-  const found = upgrade ? versionChanges(versions, from, version) : [];
-  const changed = new Set(found.map((change) => change.id));
-  if (category < 0) {
-    for (const change of found) {
-      if (!terms.every((term) => change.text.toLowerCase().includes(term) || term === change.id)) continue;
-      counts[change.chapter] = (counts[change.chapter] || 0) + 1;
-      counts.all = (counts.all || 0) + 1;
-      if (state.group === "all" || state.group === change.chapter) rows.push({ change, group: change.chapter });
-    }
-  }
   for (const bug of bugs) {
     if (category >= 0 && bug.category !== category) continue;
-    if (changed.has(bug.id)) continue;
     if (!matchesTerms(bug, terms)) continue;
     const hardware = hardwareMatch(bug, state.model);
     if (!hardware) continue;
@@ -248,24 +240,40 @@ function compute() {
       if (state.scope !== "all" && scope !== state.scope) continue;
     }
     const status = version >= 0 ? statusAt(bug, version, versions) : null;
-    if (upgrade) {
-      const group = upgradeGroup(bug, from, version, versions);
-      if (!group) continue;
-      counts[group] = (counts[group] || 0) + 1;
-      counts.all = (counts.all || 0) + 1;
-      if (state.group !== "all" && group !== state.group) continue;
-      rows.push({ bug, status, hardware, group });
-      continue;
-    } else if (status) {
+    if (status) {
       counts[status.key] = (counts[status.key] || 0) + 1;
       if (state.hidden.has(status.key)) continue;
     }
-    rows.push({ bug, status, hardware });
+    rows.push({ bug, status, hardware, changes: bug.changes });
   }
-  const risk = Object.keys(UPGRADE_GROUPS);
   const cited = (row) => (row.hardware === "cited" ? 0 : 1);
   const ended = (row) => (scoped && !row.bug.supported.length ? 1 : 0);
-  rows.sort((a, b) => risk.indexOf(a.group) - risk.indexOf(b.group) || (state.model ? cited(a) - cited(b) : 0) || ended(a) - ended(b));
+  rows.sort((a, b) => (state.model ? cited(a) - cited(b) : 0) || ended(a) - ended(b));
+  return { rows, counts };
+}
+
+/** One row per ID, in every group it belongs to: a fix may also change a behavior. */
+function computeUpgrade(terms, from, version, category) {
+  const found = versionChanges(versions, from, version);
+  const changed = new Set(found.map((change) => change.id));
+  const fixes = [];
+  for (const bug of bugs) {
+    const hardware = hardwareMatch(bug, state.model);
+    const group = hardware ? upgradeGroup(bug, from, version, versions) : null;
+    // A bug outside the upgrade still tells that a change of the same ID fixes it.
+    if (group || changed.has(bug.id)) fixes.push({ bug, hardware: group ? hardware : null, group });
+  }
+  // A change has no category of its own: it takes the one of the bug sharing its ID.
+  const matching = upgradeRows(found, fixes)
+    .filter((row) => category < 0 || (row.bug && row.bug.category === category))
+    .filter((row) => matchesTerms({ id: row.id, text: rowText(row) }, terms));
+  const counts = countGroups(matching);
+  const risk = Object.keys(UPGRADE_GROUPS);
+  const rank = (row) => Math.min(...row.groups.map((group) => risk.indexOf(group)));
+  const cited = (row) => (row.hardware === "cited" ? 0 : 1);
+  const rows = matching
+    .filter((row) => state.group === "all" || row.groups.includes(state.group))
+    .sort((a, b) => rank(a) - rank(b) || (state.model ? cited(a) - cited(b) : 0));
   return { rows, counts };
 }
 
@@ -340,20 +348,34 @@ function supportTag(bug) {
     : `<span class="tag">${t("scope.ended")}</span>`;
 }
 
-/** A change has a summary and a link: only a note from an article gives it something to unfold. */
-function renderChange({ chapter, id, text, page, entry }, terms) {
+function changeLink({ page, entry }) {
+  return officialLink(entry, page, typeof page === "number" ? t("change.page", { version: escapeHtml(entry.v), page }) : escapeHtml(entry.v));
+}
+
+/** A change shown under a bug, or under another change of the same ID: visible without unfolding. */
+function changeLine(change, terms) {
+  return `<span class="bug-change"><span class="badge change">${t(`change.${change.chapter}`)}</span><span>${highlight(change.text, terms)}</span>${changeLink(change)}</span>`;
+}
+
+/** A change has a summary and a link: only a note from an article or a bug of the same ID gives it something to unfold. */
+function renderChange({ id, bug, changes }, terms) {
+  const [first, ...others] = changes;
   const notes = annotations[id] || [];
-  const link = officialLink(entry, page, typeof page === "number" ? t("change.page", { version: escapeHtml(entry.v), page }) : escapeHtml(entry.v));
   const head = `<span class="bug-id">${id}</span>
-    <span class="bug-text">${highlight(text, terms)}</span>
-    <span class="bug-meta"><span class="badge change">${t(`change.${chapter}`)}</span>${link}${notes.map((note) => `<span class="badge potential">${escapeHtml(note.label)}</span>`).join("")}</span>`;
-  return notes.length
-    ? `<details class="bug"><summary>${head}</summary><div class="bug-detail">${renderNotes({ notes }, terms)}</div></details>`
+    <span class="bug-text">${highlight(first.text, terms)}</span>
+    ${others.map((change) => changeLine(change, terms)).join("")}
+    <span class="bug-meta"><span class="badge change">${t(`change.${first.chapter}`)}</span>${changeLink(first)}${notes.map((note) => `<span class="badge potential">${escapeHtml(note.label)}</span>`).join("")}${bug ? `<span>${t("change.alsoBug")}</span>` : ""}</span>`;
+  const related = bug
+    ? `<h3>${t("change.alsoBug")}</h3><p>${highlight(bug.description, terms)}</p><p>${escapeHtml(fixesLabel(bug))}. <a href="#query=${bug.id}">${t("change.openBug")}</a></p>`
+    : "";
+  return notes.length || bug
+    ? `<details class="bug" data-id="${id}"><summary>${head}</summary><div class="bug-detail">${renderNotes({ notes }, terms)}${related}</div></details>`
     : `<div class="bug"><div class="bug-row">${head}</div></div>`;
 }
 
-function renderBug({ bug, status, hardware, group, change }, terms) {
-  if (change) return renderChange(change, terms);
+function renderBug(row, terms) {
+  const { bug, status, hardware, group, changes = [] } = row;
+  if (!bug || (row.groups && !group)) return renderChange(row, terms);
   const badge = group
     ? `<span class="badge ${UPGRADE_GROUPS[group].tone}">${UPGRADE_GROUPS[group].label}</span>`
     : status
@@ -366,6 +388,7 @@ function renderBug({ bug, status, hardware, group, change }, terms) {
     <summary>
       <span class="bug-id">${bug.id}</span>
       <span class="bug-text">${highlight(bug.description, terms)}</span>
+      ${changes.map((change) => changeLine(change, terms)).join("")}
       <span class="bug-meta">${badge}<span>${escapeHtml(categories[bug.category])}</span><span>${escapeHtml(fixesLabel(bug))}</span>${bug.notes.map((note) => `<span class="badge fixed">${escapeHtml(note.label)}</span>`).join("")}${supportTag(bug)}${hardwareTags(bug, hardware)}</span>
     </summary>
     <div class="bug-detail">${renderNotes(bug, terms)}<h3>${t("bug.appearance")}</h3>${renderAppearance(bug)}${workaround}<h3>${t("bug.history")}</h3>${renderHistory(bug)}</div>
@@ -540,16 +563,15 @@ function pdfLine(version) {
 
 function bugTable(rows) {
   const header = ["copy.bug", "copy.status", "copy.category", "copy.description", "copy.workaround", "copy.fix"].map((key) => t(key));
-  return [header, ...rows.map(({ bug, status, group, change }) => (change ? [
-    change.id, UPGRADE_GROUPS[group].label, "", change.text, "", "",
-  ] : [
-    bug.id,
-    group ? UPGRADE_GROUPS[group].label : status ? STATUSES[status.key] : "",
-    categories[bug.category],
-    bug.description,
-    bug.workaround,
-    fixesLabel(bug),
-  ]))];
+  return [header, ...rows.map((row) => {
+    const { bug, status, group, changes = [] } = row;
+    const label = row.groups ? row.groups.map((key) => UPGRADE_GROUPS[key].label).join(", ") : status ? STATUSES[status.key] : "";
+    const changed = changes.map((change) => t("copy.change", { label: t(`change.${change.chapter}`), version: change.entry.v, text: change.text }));
+    if (!bug || (row.groups && !group)) {
+      return [row.id, label, bug ? categories[bug.category] : "", changed.join(" | "), "", bug ? fixesLabel(bug) : ""];
+    }
+    return [bug.id, label, categories[bug.category], [bug.description, ...changed].join(" | "), bug.workaround, fixesLabel(bug)];
+  })];
 }
 
 function hardwareTable(entries) {
@@ -661,6 +683,16 @@ function renderNews() {
   writeHash();
 }
 
+/** An upgrade lists changes beside bugs: it counts IDs, each once. */
+function countText(count) {
+  const keys = state.view === "upgrade"
+    ? { partial: "count.partialIds", many: "count.manyIds", one: "count.oneId", none: "count.noneId" }
+    : { partial: "count.partial", many: "count.many", one: "count.one", none: "count.none" };
+  if (count > state.shown) return t(keys.partial, { count: formatNumber(count), shown: formatNumber(state.shown) });
+  if (count > 1) return t(keys.many, { count: formatNumber(count) });
+  return t(count ? keys.one : keys.none);
+}
+
 function render() {
   renderSupport();
   if (state.view === "news") {
@@ -684,8 +716,7 @@ function render() {
   $("count").textContent = waiting
     ? t("count.choose")
     : state.view === "upgrade" && CHANGE_GROUPS.includes(state.group) ? t("count.changes", { label: UPGRADE_GROUPS[state.group].label, count: formatNumber(rows.length) })
-      : rows.length > state.shown ? t("count.partial", { count: formatNumber(rows.length), shown: formatNumber(state.shown) })
-      : rows.length > 1 ? t("count.many", { count: formatNumber(rows.length) }) : t(rows.length ? "count.one" : "count.none");
+      : countText(rows.length);
   $("results").innerHTML = rows.slice(0, state.shown).map((row) => renderBug(row, terms)).join("");
   $("more").hidden = rows.length <= state.shown;
   $("more").textContent = t("list.more", { count: formatNumber(rows.length - state.shown) });
@@ -877,6 +908,7 @@ async function start() {
   recommended = index.recommended;
   annotations = localizedNotes(data.annotations.bugs);
   versionAnnotations = localizedNotes(data.annotations.versions);
+  changesOf = changesById(versions);
   bugs = data.bugs.map(hydrate);
   lifecycles = modelLifecycles(models, versions);
 

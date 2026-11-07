@@ -163,6 +163,8 @@ details.notice p { margin: 6px 0 2px; }
 .bug-id { font-variant-numeric: tabular-nums; font-weight: 600; }
 .bug-text { min-width: 0; overflow-wrap: anywhere; }
 .bug-meta { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; font-size: 13px; color: var(--muted); }
+.bug-change { grid-column: 2; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; margin-top: 4px; font-size: 14px; overflow-wrap: anywhere; }
+.bug-change a { font-size: 13px; white-space: nowrap; }
 .badge { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .badge.affected { color: var(--affected); background: var(--affected-bg); }
 .badge.fixed { color: var(--fixed); background: var(--fixed-bg); }
@@ -188,7 +190,7 @@ details.notice p { margin: 6px 0 2px; }
   .top-row { grid-template-columns: 1fr; }
   .top-actions { grid-row: 1; justify-self: end; }
   .bug > summary, .bug-row { grid-template-columns: 1fr; }
-  .bug-meta { grid-column: 1; }
+  .bug-meta, .bug-change { grid-column: 1; }
   .bug-detail { padding-left: 14px; }
   .legend dl { grid-template-columns: 1fr; }
 }

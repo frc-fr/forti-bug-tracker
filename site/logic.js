@@ -140,6 +140,53 @@ function versionChanges(versions, from, to) {
   return [...found.values()];
 }
 
+/** Every change listed under each ID, where it first appeared, unless Fortinet rewords it later. */
+function changesById(versions) {
+  const found = new Map();
+  versions.forEach((entry) => {
+    for (const [chapter, id, text, page] of entry.changes || []) {
+      const list = found.get(id) || found.set(id, []).get(id);
+      if (!list.some((change) => change.chapter === chapter && change.text === text)) list.push({ chapter, id, text, page, entry });
+    }
+  });
+  return found;
+}
+
+/**
+ * One row per ID: a fix that also changes a behavior, or a change listed in two chapters,
+ * is a single row belonging to several groups. `fixes` may carry a bug without a group,
+ * only to tell that a change is also listed as a bug.
+ */
+function upgradeRows(changes, fixes) {
+  const rows = new Map();
+  const row = (id) => rows.get(id) || rows.set(id, { id, bug: null, group: null, changes: [], groups: [] }).get(id);
+  for (const fix of fixes) {
+    const entry = Object.assign(row(fix.bug.id), fix);
+    if (fix.group) entry.groups.unshift(fix.group);
+  }
+  for (const change of changes) {
+    const entry = row(change.id);
+    entry.changes.push(change);
+    if (!entry.groups.includes(change.chapter)) entry.groups.push(change.chapter);
+  }
+  return [...rows.values()].filter((entry) => entry.groups.length);
+}
+
+/** The words searched in a row: its bug and its changes. */
+function rowText(row) {
+  return [row.bug ? row.bug.text : "", ...row.changes.map((change) => change.text.toLowerCase())].join(" ");
+}
+
+/** A row counts once in each of its groups and once in the total: the tiles may add up to more. */
+function countGroups(rows) {
+  const counts = {};
+  for (const { groups } of rows) {
+    for (const group of new Set(groups)) counts[group] = (counts[group] || 0) + 1;
+    counts.all = (counts.all || 0) + 1;
+  }
+  return counts;
+}
+
 /** Link to the page of the PDF holding a fact; a web note has no pages, only its chapters. */
 function officialUrl(entry, page) {
   if (typeof page === "string") return `https://docs.fortinet.com${page}`;
@@ -153,5 +200,5 @@ function tableText(rows) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { versionChanges, officialUrl, branchSupport, supportedBranches, tableText, upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, statusAt, modelFamily, hardwareMatch, searchTerms, matchesTerms, upgradeGroup };
+  module.exports = { versionChanges, changesById, upgradeRows, rowText, countGroups, officialUrl, branchSupport, supportedBranches, tableText, upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, statusAt, modelFamily, hardwareMatch, searchTerms, matchesTerms, upgradeGroup };
 }

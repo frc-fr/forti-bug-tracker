@@ -1,7 +1,7 @@
 // Run with: node --test tests/site/logic.test.js
 const assert = require("node:assert");
 const test = require("node:test");
-const { versionChanges, officialUrl, branchSupport, supportedBranches, tableText, upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, statusAt, hardwareMatch, searchTerms, matchesTerms, upgradeGroup } = require("../../site/logic.js");
+const { versionChanges, changesById, upgradeRows, rowText, countGroups, officialUrl, branchSupport, supportedBranches, tableText, upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, statusAt, hardwareMatch, searchTerms, matchesTerms, upgradeGroup } = require("../../site/logic.js");
 
 const versions = [
   { v: "7.4.1", branch: "7.4" }, { v: "7.4.2", branch: "7.4" },
@@ -211,4 +211,46 @@ test("the same number in two chapters gives two changes", () => {
     { v: "7.4.2", branch: "7.4", changes: [["cli", "100", "Command", 5], ["gui", "100", "Page", 6]] },
   ];
   assert.deepEqual(versionChanges(notes, 0, 1).map(({ chapter }) => chapter), ["cli", "gui"]);
+});
+
+test("a fix that also changes a behavior is one row in both groups, counted once in all", () => {
+  const bug = { id: "1248524", text: "file download fails" };
+  const change = { chapter: "defaults", id: "1248524", text: "The default MTU changes" };
+  const rows = upgradeRows([change], [{ bug, group: "gained" }, { bug: { id: "1", text: "" }, group: "introduced" }]);
+  assert.equal(rows.length, 2);
+  const merged = rows.find((row) => row.id === "1248524");
+  assert.deepEqual(merged.groups, ["gained", "defaults"]);
+  assert.equal(merged.bug, bug);
+  assert.deepEqual(countGroups(rows), { gained: 1, defaults: 1, introduced: 1, all: 2 });
+});
+
+test("a change listed in two chapters is one row, counted once in all", () => {
+  const rows = upgradeRows([
+    { chapter: "cli", id: "756881", text: "a" }, { chapter: "gui", id: "756881", text: "b" },
+  ], []);
+  assert.equal(rows.length, 1);
+  assert.deepEqual(countGroups(rows), { cli: 1, gui: 1, all: 1 });
+});
+
+test("a bug outside the upgrade only tells that a change fixes it", () => {
+  const bug = { id: "1248524", text: "file download fails" };
+  const rows = upgradeRows([{ chapter: "defaults", id: "1248524", text: "MTU" }], [{ bug, group: null }, { bug: { id: "2" }, group: null }]);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].group, null);
+  assert.deepEqual(rows[0].groups, ["defaults"]);
+  assert.deepEqual(countGroups(rows), { defaults: 1, all: 1 });
+});
+
+test("a merged row is found by the words of its bug or of its change", () => {
+  const [row] = upgradeRows([{ chapter: "defaults", id: "1248524", text: "The default MTU" }], [{ bug: { id: "1248524", text: "file download fails" }, group: "gained" }]);
+  assert.ok(matchesTerms({ id: row.id, text: rowText(row) }, ["mtu", "download"]));
+  assert.ok(matchesTerms({ id: row.id, text: rowText(row) }, ["1248524"]));
+});
+
+test("changes by ID keep where they first appeared, once per chapter and text", () => {
+  const list = changesById([
+    { v: "8.0.0", changes: [["defaults", "1248524", "MTU", 23]] },
+    { v: "8.0.1", changes: [["defaults", "1248524", "MTU", 20], ["cli", "1248524", "Other", 15]] },
+  ]).get("1248524");
+  assert.deepEqual(list.map((change) => [change.chapter, change.entry.v, change.page]), [["defaults", "8.0.0", 23], ["cli", "8.0.1", 15]]);
 });

@@ -5,7 +5,7 @@ documentation publique de Fortinet.
 
 Site : https://frc-fr.github.io/forti-bug-tracker/
 
-Ce projet est indépendant. Il n'est ni affilié à Fortinet, ni approuvé par Fortinet. Les
+Ce projet est indépendant. Il n'est pas affilié à Fortinet. Les
 informations sont fournies à titre indicatif : vérifiez toujours la documentation officielle.
 
 ## Fonctionnalités

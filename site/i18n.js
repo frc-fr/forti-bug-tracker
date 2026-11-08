@@ -173,7 +173,7 @@ const TEXTS = {
     "chapter.gui": "Changements de l'interface",
     "chapter.table": "Changes in table size",
     "footer.inspired": "Inspiré de l'<a href=\"https://docs.fortinet.com/upgrade-tool/\" target=\"_blank\" rel=\"noopener\">Upgrade Path Tool</a> de Fortinet, à consulter pour préparer une mise à niveau.",
-    "footer.source": "Données extraites des Release Notes publiques de FortiOS et de l'article Fortinet sur les versions recommandées. Dates de fin de support issues d'endoflife.date. Site indépendant, non affilié à Fortinet et non approuvé par Fortinet. Vérifiez toujours dans la note officielle, accessible depuis chaque bug.",
+    "footer.source": "Données extraites des Release Notes publiques de FortiOS et de l'article Fortinet sur les versions recommandées. Dates de fin de support issues d'endoflife.date. Site indépendant, non affilié à Fortinet. Vérifiez toujours dans la note officielle, accessible depuis chaque bug.",
     "footer.credit": "Outil créé et maintenu par <a href=\"https://fr-consulting.fr\">FR Consulting</a>. Contact : <a href=\"mailto:contact@fr-consulting.fr\">contact@fr-consulting.fr</a>. <a href=\"mentions-legales.html\">Mentions légales</a>",
   },
   en: {
@@ -347,7 +347,7 @@ const TEXTS = {
     "chapter.gui": "Changes in GUI behavior",
     "chapter.table": "Changes in table size",
     "footer.inspired": "Inspired by Fortinet's <a href=\"https://docs.fortinet.com/upgrade-tool/\" target=\"_blank\" rel=\"noopener\">Upgrade Path Tool</a>, worth checking when preparing an upgrade.",
-    "footer.source": "Data extracted from the public FortiOS Release Notes and the Fortinet article on recommended releases. End of support dates from endoflife.date. Independent site, neither affiliated with nor endorsed by Fortinet. Always check the official note, linked from each bug.",
+    "footer.source": "Data extracted from the public FortiOS Release Notes and the Fortinet article on recommended releases. End of support dates from endoflife.date. Independent site, not affiliated with Fortinet. Always check the official note, linked from each bug.",
     "footer.credit": "Tool created and maintained by <a href=\"https://fr-consulting.fr\">FR Consulting</a>. Contact: <a href=\"mailto:contact@fr-consulting.fr\">contact@fr-consulting.fr</a>. <a href=\"legal-notice.html\">Legal notice</a>",
   },
 };

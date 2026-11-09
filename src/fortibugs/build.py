@@ -35,8 +35,8 @@ def revision_date(entry: dict) -> Optional[str]:
     return parsedate_to_datetime(stamp).strftime("%Y-%m-%d") if stamp else None
 
 
-def workflow_schedule(path: Path) -> Optional[dict]:
-    """The crons of the update workflow, read there so the site cannot contradict it."""
+def read_schedule(path: Path) -> Optional[dict]:
+    """The crons of the automatic update, read in sources/schedule.yml so the site cannot contradict it."""
     text = path.read_text(encoding="utf-8") if path.exists() else ""
     crons = re.findall(r'cron:\s*"([^"]+)"', text)
     timezone_name = re.search(r'timezone:\s*"([^"]+)"', text)
@@ -160,14 +160,14 @@ def build_bugs(documents: Dict[str, dict], index: dict) -> dict:
 
 def build_site(
     extracted: Path, manifest_path: Path, changes_path: Path, recommended_path: Path, lifecycle_path: Path,
-    annotations_path: Path, workflow_path: Path, sources: Path, dist: Path, base_url: str,
+    annotations_path: Path, schedule_path: Path, sources: Path, dist: Path, base_url: str,
 ) -> dict:
     documents = load_extracted(extracted)
     manifest = load_manifest(manifest_path)
     index = build_index(documents, manifest)
     index["recommended"] = build_recommended(recommended_path, index)
     index["lifecycle"] = build_lifecycle(lifecycle_path)
-    index["schedule"] = workflow_schedule(workflow_path)
+    index["schedule"] = read_schedule(schedule_path)
     bugs = build_bugs(documents, index)
     bugs["annotations"] = load_annotations(annotations_path, bugs, index)
     changes = latest_changes(read_changes(changes_path), documents)

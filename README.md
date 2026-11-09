@@ -31,7 +31,7 @@ limiter les requêtes, tous les documents ne sont pas vérifiés à chaque passa
 
 - Une branche FortiOS est active si l'un de ses documents a été révisé dans les 90 derniers
   jours. Tous ses documents sont alors vérifiés à chaque passage, quel que soit leur âge.
-- Les branches dormantes ne sont vérifiées que le lundi et lors d'un lancement manuel.
+- Les branches dormantes ne sont vérifiées que le lundi, ou lors d'un lancement manuel qui le demande.
 - Les nouvelles versions sont détectées à chaque passage, sur toutes les branches.
 - Une branche dormante révisée redevient active d'elle-même.
 

@@ -13,7 +13,7 @@ def main() -> None:
     parser.add_argument("--recommended", type=Path, default=Path("sources/recommended.json"))
     parser.add_argument("--lifecycle", type=Path, default=Path("sources/lifecycle.json"))
     parser.add_argument("--annotations", type=Path, default=Path("sources/annotations.json"))
-    parser.add_argument("--workflow", type=Path, default=Path(".github/workflows/update.yml"))
+    parser.add_argument("--schedule", type=Path, default=Path("sources/schedule.yml"))
     parser.add_argument("--cache", type=Path, default=Path(".cache/pdfs"))
     parser.add_argument("--output", type=Path, default=Path("data/extracted"))
     parser.add_argument("--changes", type=Path, default=Path("data/changes.json"))
@@ -45,7 +45,7 @@ def main() -> None:
         sys.exit(1 if problems else 0)
     elif args.command == "build":
         summary = build.build_site(
-            args.output, args.manifest, args.changes, args.recommended, args.lifecycle, args.annotations, args.workflow,
+            args.output, args.manifest, args.changes, args.recommended, args.lifecycle, args.annotations, args.schedule,
             args.site, args.dist, args.base_url,
         )
         logging.info("%s", summary)

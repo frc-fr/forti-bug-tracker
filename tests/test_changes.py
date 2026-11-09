@@ -1,7 +1,7 @@
 import json
 from xml.etree import ElementTree
 
-from fortibugs.build import build_bugs, load_annotations, workflow_schedule
+from fortibugs.build import build_bugs, load_annotations, read_schedule
 from fortibugs.extract import diff_version, read_changes, write_changes
 from fortibugs.feed import ATOM, build_feed, latest_changes, titles_of
 
@@ -93,7 +93,7 @@ def test_an_annotation_can_target_a_change(tmp_path):
 def test_schedule_comes_from_the_workflow(tmp_path):
     path = tmp_path / "update.yml"
     path.write_text('on:\n  schedule:\n    - cron: "1 2 * * *"\n      timezone: "Europe/Paris"\n    - cron: "3 4 * * *"\n')
-    assert workflow_schedule(path) == {"crons": ["1 2 * * *", "3 4 * * *"], "timezone": "Europe/Paris"}
+    assert read_schedule(path) == {"crons": ["1 2 * * *", "3 4 * * *"], "timezone": "Europe/Paris"}
     path.write_text('on:\n  schedule:\n    - cron: "1 2 * * *"\n')
-    assert workflow_schedule(path)["timezone"] == "UTC"
-    assert workflow_schedule(tmp_path / "missing.yml") is None
+    assert read_schedule(path)["timezone"] == "UTC"
+    assert read_schedule(tmp_path / "missing.yml") is None

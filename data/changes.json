@@ -163,5 +163,19 @@
   {"date": "2026-10-22", "version": "7.2.14", "kind": "version", "bugs": []},
   {"date": "2026-10-22", "version": "7.4.13", "kind": "version", "bugs": []},
   {"date": "2026-10-22", "version": "7.6.8", "kind": "version", "bugs": []},
-  {"date": "2026-10-22", "version": "8.0.2", "kind": "version", "bugs": []}
+  {"date": "2026-10-22", "version": "8.0.2", "kind": "version", "bugs": []},
+  {"date": "2026-11-10", "version": "7.6.0", "kind": "known_added", "bugs": ["1224835"]},
+  {"date": "2026-11-10", "version": "7.6.1", "kind": "fixed_added", "bugs": ["1096129"]},
+  {"date": "2026-11-10", "version": "7.6.1", "kind": "known_added", "bugs": ["1224835"]},
+  {"date": "2026-11-10", "version": "7.6.2", "kind": "known_added", "bugs": ["1224835"]},
+  {"date": "2026-11-10", "version": "7.6.4", "kind": "fixed_added", "bugs": ["1075340"]},
+  {"date": "2026-11-10", "version": "7.6.4", "kind": "known_added", "bugs": ["1224835"]},
+  {"date": "2026-11-10", "version": "7.6.5", "kind": "fixed_added", "bugs": ["1212843"]},
+  {"date": "2026-11-10", "version": "7.6.5", "kind": "known_added", "bugs": ["1224835"]},
+  {"date": "2026-11-10", "version": "7.6.6", "kind": "known_added", "bugs": ["1224835"]},
+  {"date": "2026-11-10", "version": "7.6.8", "kind": "fixed_added", "bugs": ["1267914", "1293692", "1305821"]},
+  {"date": "2026-11-10", "version": "7.6.8", "kind": "known_added", "bugs": ["1360579"]},
+  {"date": "2026-11-10", "version": "8.0.0", "kind": "fixed_added", "bugs": ["1075340", "1198683", "1212843", "1226274", "1270035", "1271944"]},
+  {"date": "2026-11-10", "version": "8.0.1", "kind": "fixed_added", "bugs": ["1178774", "1268238", "1277162", "1286423", "1292652", "1293692", "1299646", "1305534", "1305821", "1306994", "1308346"]},
+  {"date": "2026-11-10", "version": "8.0.1", "kind": "known_added", "bugs": ["1169754"]}
 ]

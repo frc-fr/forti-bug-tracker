@@ -1396,37 +1396,37 @@
       "version": "7.4.10",
       "branch": "7.4",
       "pdf_url": "https://fortinetweb.s3.amazonaws.com/docs.fortinet.com/v2/attachments/581bebcb-ecd0-11f0-8b43-d2943efe5b2f/fortios-v7.4.10-release-notes.pdf",
-      "etag": "5022ae9f1eb60f82b82561f23396cf40",
-      "last_modified": "Mon, 26 Oct 2026 20:26:05 GMT",
-      "size": 705565,
-      "sha256": "10f809f9955a0e0d53521b60af8f9988245f95bd0f0647647e669f6a9ad64c2a"
+      "etag": "1ff76f390cd6aad1542932b963e67601",
+      "last_modified": "Tue, 10 Nov 2026 16:18:38 GMT",
+      "size": 706655,
+      "sha256": "638578526326d4787abfd5711844aa26d0859d2d4e1693c7eacecbb373800e54"
     },
     {
       "version": "7.4.11",
       "branch": "7.4",
       "pdf_url": "https://fortinetweb.s3.amazonaws.com/docs.fortinet.com/v2/attachments/29368ec8-faf1-11f0-8b43-d2943efe5b2f/fortios-v7.4.11-release-notes.pdf",
-      "etag": "cf336bc577f518da3bddf8170c2f5a27",
-      "last_modified": "Mon, 26 Oct 2026 20:07:16 GMT",
-      "size": 608516,
-      "sha256": "10bd5a9f0be204c2ac5dabc8a86d285a316de1537dc8ec9f83969770630ee7f6"
+      "etag": "9068c7a5edcff030c6d33636f798d6b9",
+      "last_modified": "Tue, 10 Nov 2026 16:16:28 GMT",
+      "size": 611012,
+      "sha256": "862285c5ce022daeb724a01c345298783a69ff5fa2ab49f1f4700d7167b22f4e"
     },
     {
       "version": "7.4.12",
       "branch": "7.4",
       "pdf_url": "https://fortinetweb.s3.amazonaws.com/docs.fortinet.com/v2/attachments/0927b474-47e2-11f1-b31d-02356ffb40d9/fortios-v7.4.12-release-notes.pdf",
-      "etag": "50ff9af779ede0dbdbe363a9ccf46de7",
-      "last_modified": "Mon, 26 Oct 2026 19:48:03 GMT",
-      "size": 684483,
-      "sha256": "455cfdf8518cdb415acb91ec47683b39f0c53c33329ae606a77cb52e4f842d76"
+      "etag": "a3111723ade8ed3f4c413921b4c36fa4",
+      "last_modified": "Tue, 10 Nov 2026 16:22:58 GMT",
+      "size": 685116,
+      "sha256": "2706f1942affa5e59a0c1f82ab02cca899f204e3ca2281263adbd48e7d66d46a"
     },
     {
       "version": "7.4.13",
       "branch": "7.4",
       "pdf_url": "https://fortinetweb.s3.amazonaws.com/docs.fortinet.com/v2/attachments/a2230345-cbdc-11f1-8c5a-8e4c95ff11ac/fortios-v7.4.13-release-notes.pdf",
-      "etag": "5ff5d9a5a5f56f1e5e9b09f35aa38e86",
-      "last_modified": "Mon, 02 Nov 2026 19:28:04 GMT",
-      "size": 661800,
-      "sha256": "cf7fff91f29fff6c1d20999c294c4f5f2dc2ea84c5ea0c54c4b8abcd24976dc3"
+      "etag": "1cadfc8ca3035b9daf3d16203d5516d0",
+      "last_modified": "Tue, 10 Nov 2026 16:21:02 GMT",
+      "size": 662287,
+      "sha256": "ac6975b6e02649a7fed02cd381f65c00e9ca331214e2e2fc01a836429ab6600c"
     },
     {
       "version": "7.6.0",

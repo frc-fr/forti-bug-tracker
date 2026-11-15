@@ -3,17 +3,25 @@
 The PDFs have a real text layer and bookmarks, so no OCR is involved: sections
 come from the bookmarks and rows from the position of the text, anchored on the
 "Bug ID" / "Description" table headers because the layout moved over the years.
-Anything that does not fit is reported in `warnings` rather than dropped.
+Anything that does not fit is reported rather than dropped.
+
+Every bug ID of a bug chapter ends in one bucket of the processing report: read, left
+out by a known rule ("ruled"), or not understood ("failed"). The IDs are also read from
+the plain text of the chapter, without the geometry: one found in none of the buckets
+is a silent path of the code, and the report calls the note suspect.
 """
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import fitz
 
+from .report import accounting, finding
+
 BUG_ID = re.compile(r"\b\d{5,7}\b")
-ID_CELL = re.compile(r"^\s*\d{5,7}(\s*,?\s*\d{5,7})*\s*,?\s*$")
+# A stray dash may follow the IDs: "300372 -".
+ID_CELL = re.compile(r"^\s*\d{5,7}(\s*,?\s*\d{5,7})*\s*[,-]?\s*$")
 BULLET_ID = re.compile(r"\((\d{5,7})\)")
 CVE_REFERENCE = re.compile(r"[\s(,;]*\bCVE-\d{4}-\d{4,}\b[)]?", re.I)
 VULNERABILITY_NOTICE = re.compile(r"no longer vulnerable|following CVE", re.I)
@@ -32,6 +40,14 @@ OTHER_CHAPTERS = re.compile(
     r"new feature|table of contents|image checksum|firmware image checksums|appendix|supported models|upgrading to",
     re.I,
 )
+# Bug IDs cited in the text of the other chapters: "(bug ID 1234567)", "bug 570575".
+CITED_ID = re.compile(r"\bbug(?:\s+ID)?\s*[:#]?\s*(\d{5,7})\b", re.I)
+# The lines of a "Bug ID" table outside the bug chapters.
+TABLE_ID = re.compile(r"(?m)^\s*(\d{5,7})\s*,?\s*$")
+# Chapters whose IDs are not bugs (enhancements), or are read as changes of behavior.
+NOT_PROSE = re.compile(r"new feature|^changes in", re.I)
+# The frame of the PDF, not its content: never reported as a section left unread.
+FRAME = re.compile(r"^table of contents$", re.I)
 TABLE_CAPTION = re.compile(r"^Table \d+:\s*(?:Resolved |Known )?(.*?)(?: issues?)?(?: \(continued\))?$", re.I)
 SYMBOL_FONTS = ("dingbat", "wingding", "symbol")
 
@@ -77,17 +93,41 @@ CHAPTER_FURNITURE = re.compile(
 )
 
 
+def as_text(found: dict) -> str:
+    return f"{found['page']}: {found['count']} bugs under {found['where']!r}: {found['detail']}"
+
+
 @dataclass
 class Document:
     build: Optional[str]
     released: Optional[str]
     models: List[str]
     observations: List[dict]
-    skipped_cve_rows: int
-    warnings: List[str]
+    # What is not read, and why: a known rule ("left_out"), or a layout to adapt the code to.
+    findings: List[dict]
     notices: List[list] = field(default_factory=list)
     pages: Dict[str, int] = field(default_factory=dict)
     changes: List[list] = field(default_factory=list)
+    # Bug ID: (page, place) where the note lists it.
+    listed: Dict[str, Tuple[str, str]] = field(default_factory=dict)
+    # Each chapter or section title, and whether the site reads something under it.
+    headings: Dict[str, bool] = field(default_factory=dict)
+    # Bug IDs cited in the text of the other chapters.
+    prose: Set[str] = field(default_factory=set)
+
+    @property
+    def warnings(self) -> List[str]:
+        """What the code cannot read: it has to be adapted."""
+        return [as_text(f) for f in self.findings if f["kind"] == "not_understood"]
+
+    @property
+    def skipped_cve_rows(self) -> int:
+        """The security fixes left out."""
+        return sum(f["count"] for f in self.findings if f["rule"] == "security")
+
+    def accounting(self) -> Dict[str, Set[str]]:
+        """Each bug ID the note lists, in one bucket: read, ruled out, failed, or unaccounted."""
+        return accounting(set(self.listed), {o["bug_id"] for o in self.observations}, self.findings)
 
 
 def page_lines(page: fitz.Page) -> List[List[Line]]:
@@ -166,9 +206,19 @@ def after_title(groups: List[List[Line]], title: str) -> List[List[Line]]:
     return groups
 
 
-def parse_section(doc: fitz.Document, section: Section, warnings: List[str]) -> Tuple[List[Row], int]:
+def link(url: str, page: Optional[int]) -> str:
+    """The exact page of the PDF, as the site links it."""
+    return f"{url}#page={page}" if page else url
+
+
+def place(section_title: str, category: Optional[str]) -> str:
+    return " / ".join(part for part in (section_title, category) if part)
+
+
+def parse_section(doc: fitz.Document, section: Section, findings: List[dict], url: str) -> Tuple[List[Row], List[Row]]:
+    """The rows of a bug chapter, and those of its security tables, which the site leaves out."""
     rows: List[Row] = []
-    skipped = 0
+    security: List[Row] = []
     status = section.status
     category = section.category
     columns: Optional[Tuple[float, float]] = None
@@ -187,7 +237,8 @@ def parse_section(doc: fitz.Document, section: Section, warnings: List[str]) -> 
                 columns = header[:2]
                 cve_table = "cve" in header[2].lower() or cve_table
                 if not cve_table and normalize_title(header[2]) != "description":
-                    warnings.append(f"p{number}: unknown column {header[2]!r}")
+                    findings.append(finding("not_understood", "unknown_column", link(url, number),
+                                            place(section.title, category), [], f"a table column named {header[2]!r}"))
                 row = None
                 continue
 
@@ -195,7 +246,7 @@ def parse_section(doc: fitz.Document, section: Section, warnings: List[str]) -> 
             if len(group) == 1 and not in_table_text and (first.bold or first.size >= CHAPTER_MIN_SIZE):
                 title = normalize_title(first.text)
                 if title == stop:
-                    return rows, skipped
+                    return rows, security
                 # The chapter title is repeated on top of its pages: tables go on.
                 if title == normalize_title(section.title):
                     continue
@@ -206,6 +257,8 @@ def parse_section(doc: fitz.Document, section: Section, warnings: List[str]) -> 
                     status, category = "known_existing", section.category
                 elif "vulnerabilit" in title:
                     cve_table = True
+                    if section.category is None:
+                        category = clean_category(first.text)
                 elif section.category is None:
                     cve_table = False
                     category = clean_category(first.text)
@@ -222,18 +275,21 @@ def parse_section(doc: fitz.Document, section: Section, warnings: List[str]) -> 
                 if row is not None and (row.open_cell or not right):
                     row.ids.extend(ids)
                 else:
-                    if cve_table:
-                        skipped += 1
                     row = Row(ids, number, status, category)
-                    if not cve_table:
-                        rows.append(row)
+                    (security if cve_table else rows).append(row)
                 row.open_cell = cell.rstrip().endswith(",")
             elif left:
+                # An ID cell with more than IDs: a form the parser does not read. The end of a
+                # reference, "(duplicate of" + "378521)", lists no bug.
+                found = re.match(r"\s*(\d{5,7})(?=\s|,|$)", cell)
+                if found:
+                    findings.append(finding("not_understood", "id_cell", link(url, number), place(section.title, category),
+                                            [found.group(1)], f"an ID cell that holds more than IDs: {cell[:60]!r}"))
                 row = None
                 continue
             if row is not None and right:
                 row.text.extend(line.text for line in right)
-    return rows, skipped
+    return rows, security
 
 
 def parse_bullets(doc: fitz.Document, section: Section) -> List[Row]:
@@ -266,17 +322,19 @@ def clean_description(text: str) -> Tuple[str, Optional[str]]:
     return parts[0].strip(), workaround or None
 
 
-def to_observations(rows: List[Row], warnings: List[str]) -> Tuple[List[dict], int]:
+def to_observations(rows: List[Row], findings: List[dict], url: str, chapter: str = "") -> List[dict]:
+    """The observations of the rows; a security fix, or a row without text, goes to the findings."""
     observations = []
-    skipped = 0
     for row in rows:
         raw = join_lines(row.text)
         if VULNERABILITY_NOTICE.search(raw):
-            skipped += 1
+            findings.append(finding("left_out", "security", link(url, row.page), place(chapter, row.category), row.ids,
+                                    "a vulnerability fix in a bug list"))
             continue
         description, workaround = clean_description(raw)
         if not description:
-            warnings.append(f"p{row.page}: bug {row.ids[0]} has no description")
+            findings.append(finding("not_understood", "no_description", link(url, row.page), place(chapter, row.category),
+                                    row.ids, "a bug ID without description: the table layout is not read"))
         for bug_id in row.ids:
             observations.append({
                 "bug_id": bug_id,
@@ -286,7 +344,7 @@ def to_observations(rows: List[Row], warnings: List[str]) -> Tuple[List[dict], i
                 "workaround": workaround,
                 "page": row.page,
             })
-    return observations, skipped
+    return observations
 
 
 def extract_models(doc: fitz.Document) -> List[str]:
@@ -405,58 +463,111 @@ def title_pattern(title: str) -> str:
     return r"(?m)^\s*" + r"\s+".join(map(re.escape, title.split())) + r"\s*$"
 
 
-def expected_ids(doc: fitz.Document, section: Section) -> set:
-    """IDs of a section found without the geometry: the cross-check of the parser."""
-    text = "\n".join(
-        doc[number - 1].get_text()
-        for number in range(section.first_page, section.last_page + 1)
-    )
-    start = re.search(title_pattern(section.title), text)
-    if start:
-        text = text[start.end():]
-    if section.next_title:
-        # The last page is shared when the next chapter starts on it.
-        text = re.split(title_pattern(section.next_title), text)[0]
-    text = re.sub(r"Beta Forum:\s*\d+", "", text)
-    return set(re.findall(r"(?m)^\s*(\d{5,7})\s*,?\s*(?:$|[A-Za-z])", text))
+def listed_ids(doc: fitz.Document, section: Section) -> Dict[str, int]:
+    """IDs of a section found without the geometry, with their page: the cross-check of the parser."""
+    found: Dict[str, int] = {}
+    started = False
+    for number in range(section.first_page, section.last_page + 1):
+        text = doc[number - 1].get_text()
+        if not started:
+            start = re.search(title_pattern(section.title), text)
+            if start:
+                text, started = text[start.end():], True
+            elif number == section.first_page:
+                started = True
+        if section.next_title and number == section.last_page:
+            # The last page is shared when the next chapter starts on it.
+            text = re.split(title_pattern(section.next_title), text)[0]
+        text = re.sub(r"Beta Forum:\s*\d+", "", text)
+        for bug in re.findall(r"(?m)^\s*(\d{5,7})\s*,?\s*(?:$|[A-Za-z])", text):
+            found.setdefault(bug, number)
+    return found
 
 
-def parse_pdf(path: Path) -> Document:
+def chapter_headings(toc: List[tuple], sections: List[Section]) -> Dict[str, bool]:
+    """Each chapter and section title, and whether the site reads something under it.
+
+    Read: the bug chapters and their sections, the chapters of notices and their
+    sections, the change log (dates) and the supported models.
+    """
+    bugs = {section.title for section in sections}
+    notices = {notice[1] for notice in chapter_notices(toc) if notice[1]}
+    headings: Dict[str, bool] = {}
+    whole = False
+    for level, title, _ in toc:
+        name = " ".join(title.split())
+        if level > 2 or FRAME.match(name):
+            continue
+        if level == 1:
+            notice = any(re.match(pattern, name, re.I) for pattern, _ in NOTICE_CHAPTERS)
+            whole = title in bugs or notice
+            used = whole or bool(re.match(r"change log$|introduction", name, re.I))
+        else:
+            used = whole or bool(re.search(r"supported models", name, re.I))
+        headings[name] = headings.get(name, False) or used or name in notices
+    return headings
+
+
+def cited_ids(doc: fitz.Document, sections: List[Section]) -> Set[str]:
+    """Bug IDs cited in the other chapters: special notices, limitations, change log..."""
+    toc = [(title, page) for level, title, page in doc.get_toc() if level == 1]
+    bug_pages = {n for s in sections for n in range(s.first_page, s.last_page + 1)}
+    found: Set[str] = set()
+    for number in range(1, len(doc) + 1):
+        chapter = next((title for title, page in reversed(toc) if page <= number), "")
+        if number in bug_pages or NOT_PROSE.search(chapter.strip()):
+            continue
+        text = doc[number - 1].get_text()
+        found.update(CITED_ID.findall(text))
+        if re.search(r"(?m)^\s*Bug ID\s*$", text):
+            found.update(TABLE_ID.findall(text))
+    return found
+
+
+def parse_pdf(path: Path, url: str = "") -> Document:
+    """Read a PDF; `url` is where Fortinet publishes it, for the exact pages of the report."""
     doc = fitz.open(path)
-    warnings: List[str] = []
+    findings: List[dict] = []
     sections = find_sections(doc)
-    if not any(s.status == "resolved" for s in sections):
-        warnings.append("no Resolved issues section")
-    if not any(s.status == "known" for s in sections):
-        warnings.append("no Known issues section")
+    for status, name in (("resolved", "Resolved issues"), ("known", "Known issues")):
+        if not any(s.status == status for s in sections):
+            findings.append(finding("not_understood", "section_missing", url, "", [],
+                                    f"no {name} chapter among the bookmarks"))
 
     observations: List[dict] = []
-    skipped = 0
-    seen: Dict[str, bool] = {}
+    listed: Dict[str, Tuple[str, str]] = {}
     for section in sections:
-        rows, section_skipped = parse_section(doc, section, warnings)
+        rows, security = parse_section(doc, section, findings, url)
         if not rows and section.category is None:
             rows = parse_bullets(doc, section)
-        section_observations, notices = to_observations(rows, warnings)
-        skipped += section_skipped + notices
-        observations.extend(section_observations)
-        seen.update((o["bug_id"], True) for o in section_observations)
-        if not section_skipped and not notices:
-            missing = sorted(expected_ids(doc, section) - set(seen))
-            if missing:
-                warnings.append(f"{section.title}: {len(missing)} IDs not parsed: {missing[:5]}")
+        observations.extend(to_observations(rows, findings, url, section.title))
+        for row in security:
+            findings.append(finding("left_out", "security", link(url, row.page), place(section.title, row.category),
+                                    row.ids, "a list of vulnerability fixes"))
+        for row in rows + security:
+            for bug in row.ids:
+                listed.setdefault(bug, (link(url, row.page), place(section.title, row.category)))
+        # A line of a description may start with a number: only the ID cell of a row lists a bug.
+        described = {found.group(1) for row in rows + security for line in row.text
+                     for found in [re.match(r"\s*(\d{5,7})\b", line)] if found}
+        for bug, number in listed_ids(doc, section).items():
+            if bug not in listed and bug not in described:
+                listed[bug] = (link(url, number), section.title)
 
     build, build_page = find_in_pages(doc, r"\bbuild\s*(\d{3,4})\b", 12)
     notices = extract_notices(doc)
     released, released_page = find_in_pages(doc, r"(\d{4}-\d{2}-\d{2})\s+Initial", 10)
+    changes = extract_changes(doc, notices)
     return Document(
         build=build,
         released=released,
         models=extract_models(doc),
         observations=observations,
-        skipped_cve_rows=skipped,
-        warnings=warnings,
+        findings=findings,
         notices=notices,
-        changes=extract_changes(doc, notices),
+        changes=changes,
         pages={"build": build_page, "changes": change_log_page(doc) or released_page},
+        listed=listed,
+        headings=chapter_headings(doc.get_toc(), sections),
+        prose=cited_ids(doc, sections) - set(listed) - {row[1] for row in changes},
     )

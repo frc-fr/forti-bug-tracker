@@ -1,9 +1,10 @@
 """Read the web version of the Release Notes, for a version whose PDF cannot be reached."""
 import html
 import re
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from .parser import CHANGE_CHAPTERS, MODEL, VULNERABILITY_ID, Document, Row, chapter_notices, first_sentence, to_observations
+from .report import finding
 
 CHAPTERS = {
     "known": "known-issues",
@@ -40,8 +41,11 @@ def chapter_urls(page: str, version: str) -> Dict[str, str]:
     return urls
 
 
-def parse_rows(page: str, known: bool) -> List[Row]:
-    """Resolved issues are grouped by h2; known issues by status in h2 and category in h3."""
+def parse_rows(page: str, known: bool, listed: Dict[str, str]) -> List[Row]:
+    """Resolved issues are grouped by h2; known issues by status in h2 and category in h3.
+
+    `listed` gets each ID that starts a row, read or not, with its heading.
+    """
     rows = []
     status = "resolved"
     category = None
@@ -56,6 +60,9 @@ def parse_rows(page: str, known: bool) -> List[Row]:
                 category = title
             continue
         cells = CELL.findall(row)
+        first = BUG_ID.match(text_of(cells[0])) if cells else None
+        if first:
+            listed.setdefault(first.group(0), category or "")
         if len(cells) == 2 and BUG_ID.search(text_of(cells[0])):
             rows.append(Row(BUG_ID.findall(text_of(cells[0])), None, status, category, [text_of(cells[1])]))
     return rows
@@ -99,16 +106,26 @@ def parse_toc(page: str) -> List[tuple]:
     return toc
 
 
-def parse_web_notes(pages: Dict[str, str]) -> Document:
-    """Build the same document as a PDF; raise when the pages do not look as expected."""
-    warnings: List[str] = []
-    rows = parse_rows(pages["resolved"], False) + parse_rows(pages["known"], True)
-    observations, skipped = to_observations(rows, warnings)
+def parse_web_notes(pages: Dict[str, str], url: str = "") -> Document:
+    """Build the same document as a PDF; raise when the pages do not look as expected.
+
+    `url` is the web page of the notes: the chapters have no stable address of their own.
+    """
+    findings: List[dict] = []
+    listed: Dict[str, Tuple[str, str]] = {}
+    rows: List[Row] = []
+    for chapter, title in (("resolved", "Resolved issues"), ("known", "Known issues")):
+        found: Dict[str, str] = {}
+        rows += parse_rows(pages[chapter], chapter == "known", found)
+        for bug, where in found.items():
+            listed.setdefault(bug, (url, " / ".join(part for part in (title, where) if part)))
+    observations = to_observations(rows, findings, url)
     models = parse_models(pages["intro"])
-    if not observations or not models or warnings:
-        raise ValueError(f"unexpected web notes: {len(observations)} bugs, {len(models)} models, {warnings}")
+    failed = [f["detail"] for f in findings if f["kind"] == "not_understood"]
+    if not observations or not models or failed:
+        raise ValueError(f"unexpected web notes: {len(observations)} bugs, {len(models)} models, {failed}")
     build = re.search(r"\bbuild\s*(\d{3,4})\b", text_of(pages["intro"]))
     released = re.search(r"(\d{4}-\d{2}-\d{2})\s+Initial", text_of(pages["changes"]))
     notices = chapter_notices(parse_toc(pages["intro"]))
     return Document(build.group(1) if build else None, released.group(1) if released else None,
-                    models, observations, skipped, [], notices, changes=parse_changes(pages, notices))
+                    models, observations, findings, notices, changes=parse_changes(pages, notices), listed=listed)

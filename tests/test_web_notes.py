@@ -52,10 +52,22 @@ def test_a_broken_page_keeps_the_last_data(tmp_path):
     cache.mkdir()
     output.mkdir()
     log.write_text("[]")
-    (output / "7.4.7.json").write_text("previous")
+    (output / "7.4.7.json").write_text('{"observations": [{"bug_id": "100001"}]}')
     (cache / "7.4.7.web.json").write_text(json.dumps({**PAGES, "resolved": "", "known": ""}))
-    assert extract_all(cache, output, log) == {}
-    assert (output / "7.4.7.json").read_text() == "previous"
+    report = tmp_path / "report.json"
+    # The only version is not read: the update stops, the site keeps its last version.
+    assert extract_all(tmp_path / "manifest.json", cache, output, log, report)
+    assert (output / "7.4.7.json").read_text() == '{"observations": [{"bug_id": "100001"}]}'
+    found = json.loads(report.read_text())["documents"][0]
+    assert (found["status"], found["kept"], found["findings"][0]["rule"]) == ("not_understood", "—", "parse_error")
+
+
+def test_the_web_notes_account_for_every_id():
+    document = parse_web_notes(PAGES, "https://docs.example/notes")
+    buckets = document.accounting()
+    assert buckets["read"] == {"100001", "100003", "100004"} and buckets["ruled"] == {"100002"}
+    assert buckets["unaccounted"] == set()
+    assert document.listed["100003"] == ("https://docs.example/notes", "Known issues / HA")
 
 
 def test_the_navigation_reads_like_bookmarks():

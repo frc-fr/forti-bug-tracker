@@ -70,7 +70,8 @@ def test_rows_categories_and_wrapped_descriptions(notes, tmp_path):
         ("1203158", "resolved", "IPsec VPN", "Tunnel flaps during rekey"),
         ("1214345", "resolved", "IPsec VPN", "High memory usage when multiple VDOMs are configured."),
     ]
-    assert result.warnings == ["no Known issues section"]
+    assert [(f["kind"], f["rule"]) for f in result.findings] == [("not_understood", "section_missing")]
+    assert result.warnings == [": 0 bugs under '': no Known issues chapter among the bookmarks"]
 
 
 def test_stacked_ids_share_their_description(notes, tmp_path):
@@ -146,6 +147,10 @@ def test_cve_tables_are_dropped(notes, tmp_path):
     result = notes.save(tmp_path / "n.pdf")
     assert [o["bug_id"] for o in result.observations] == ["1203158"]
     assert result.skipped_cve_rows == 1
+    security = [f for f in result.findings if f["rule"] == "security"]
+    assert [(f["kind"], f["ids"], f["page"], f["where"]) for f in security] == [
+        ("left_out", ["1227177"], "#page=1", "Resolved issues / Common Vulnerabilities and Exposures")]
+    assert result.accounting()["ruled"] == {"1227177"} and result.accounting()["unaccounted"] == set()
 
 
 def test_unknown_table_column_is_reported(notes, tmp_path):
@@ -153,7 +158,9 @@ def test_unknown_table_column_is_reported(notes, tmp_path):
     notes.heading("GUI")
     notes.header("Severity")
     notes.row("1203158", "Fixed bug")
-    assert any("unknown column" in w for w in notes.save(tmp_path / "n.pdf").warnings)
+    result = notes.save(tmp_path / "n.pdf")
+    assert [f["rule"] for f in result.findings if f["kind"] == "not_understood"] == ["section_missing", "unknown_column"]
+    assert any("Severity" in w for w in result.warnings)
 
 
 def test_id_outside_a_table_is_reported(notes, tmp_path):
@@ -163,7 +170,36 @@ def test_id_outside_a_table_is_reported(notes, tmp_path):
     notes.row("1203158", "Fixed bug")
     notes.heading("Other")
     notes.write(ID_X, "1214345 is listed without a table header")
-    assert any("not parsed" in w for w in notes.save(tmp_path / "n.pdf").warnings)
+    result = notes.save(tmp_path / "n.pdf")
+    buckets = result.accounting()
+    assert buckets["read"] == {"1203158"} and buckets["unaccounted"] == {"1214345"}
+    assert result.listed["1214345"] == ("#page=1", "Resolved issues")
+
+
+def test_a_description_starting_with_a_number_lists_no_bug(notes, tmp_path):
+    notes.chapter("Resolved issues")
+    notes.heading("GUI")
+    notes.header()
+    notes.row("1203158", "The session table holds up to", "100000 sessions only.")
+    result = notes.save(tmp_path / "n.pdf")
+    assert result.accounting()["unaccounted"] == set()
+    assert set(result.listed) == {"1203158"}
+
+
+def test_unread_chapters_and_cited_ids(notes, tmp_path):
+    notes.chapter("Special notices")
+    notes.write(ID_X, "This is fixed in a later build (bug 1111111).")
+    notes.y += 20
+    notes.chapter("Resolved issues")
+    notes.heading("GUI")
+    notes.header()
+    notes.row("1203158", "Fixed bug")
+    notes.chapter("Limitations")
+    notes.write(ID_X, "Nothing here.")
+    notes.toc.append([1, "Table of Contents", 1])
+    result = notes.save(tmp_path / "n.pdf")
+    assert result.headings == {"Special notices": True, "Resolved issues": True, "Limitations": False}
+    assert result.prose == {"1111111"}
 
 
 def test_workaround_and_cve_cleaning():

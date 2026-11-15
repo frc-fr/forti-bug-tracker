@@ -143,8 +143,9 @@ def update_manifest(path: Path, client: Client, check_all: bool = True) -> Dict[
             manifest[version] = entry
             entry["pdf_url"] = url
             if state is None:
-                # Recorded rather than skipped: the site has to show the gap.
-                log.error("%s: no reachable PDF", version)
+                # Recorded rather than skipped: the site and the processing report show the gap,
+                # on the version itself; the collection goes on.
+                log.warning("%s: no reachable PDF", version)
                 entry["unavailable"] = True
                 save_manifest(path, manifest)
                 continue

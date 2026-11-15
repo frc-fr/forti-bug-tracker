@@ -5,15 +5,15 @@ import re
 import shutil
 from collections import Counter
 from datetime import datetime, timezone
-from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from .collect import PAGE_URL, load_manifest
-from .extract import read_changes
+from .extract import read_changes, revision_date
 from .feed import build_feed, latest_changes
 from .normalize import canonical_model, hardware_tags, model_core, normalize_category
 from .recommended import resolve_models
+from .report import load as load_report
 from .versions import branch_of, version_key
 
 log = logging.getLogger(__name__)
@@ -27,12 +27,6 @@ def load_extracted(directory: Path) -> Dict[str, dict]:
         document = json.loads(path.read_text(encoding="utf-8"))
         documents[document["version"]] = document
     return documents
-
-
-def revision_date(entry: dict) -> Optional[str]:
-    """Date of the last revision of a PDF, from its Last-Modified header."""
-    stamp = entry.get("last_modified")
-    return parsedate_to_datetime(stamp).strftime("%Y-%m-%d") if stamp else None
 
 
 def read_schedule(path: Path) -> Optional[dict]:
@@ -161,6 +155,7 @@ def build_bugs(documents: Dict[str, dict], index: dict) -> dict:
 def build_site(
     extracted: Path, manifest_path: Path, changes_path: Path, recommended_path: Path, lifecycle_path: Path,
     annotations_path: Path, schedule_path: Path, sources: Path, dist: Path, base_url: str,
+    report_path: Path = Path("data/report.json"),
 ) -> dict:
     documents = load_extracted(extracted)
     manifest = load_manifest(manifest_path)
@@ -184,6 +179,10 @@ def build_site(
         )
 
     (dist / "feed.xml").write_bytes(build_feed(changes, descriptions, base_url))
+    # What the last run could not read, for etat.html.
+    processing = load_report(report_path)
+    processing["updated"] = index["updated"]
+    (dist / "data" / "report.json").write_text(json.dumps(processing, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
     tagged = Counter(
         "model" if row[4] else "family" if row[5] else "asic" if row[6] else "generic"

@@ -249,6 +249,11 @@ function compute() {
     }
     const status = version >= 0 ? statusAt(bug, version, versions) : null;
     if (status) {
+      // A release shows what the notes of its branch cite; the bugs of other branches are only counted.
+      if (status.detail && status.detail.id === "noMention") {
+        counts.elsewhere = (counts.elsewhere || 0) + 1;
+        continue;
+      }
       counts[status.key] = (counts[status.key] || 0) + 1;
       if (state.hidden.has(status.key)) continue;
     }
@@ -758,6 +763,19 @@ function countText(count) {
   return t(count ? keys.one : keys.none);
 }
 
+/** The bugs no note of the chosen release's branch cites: counted, not listed, one click away. */
+function renderOtherBranches(counts) {
+  const version = versionIndex(state.version);
+  const count = state.view === "bugs" && version >= 0 ? counts.elsewhere || 0 : 0;
+  $("elsewhere").hidden = !count;
+  if (!count) return;
+  const params = stateParams();
+  params.delete("version");
+  $("elsewhere").innerHTML = t("count.elsewhere", {
+    count: formatNumber(count), branch: escapeHtml(versions[version].branch), url: `#${escapeHtml(params.toString())}`,
+  });
+}
+
 function render() {
   renderSupport();
   if (state.view === "news") {
@@ -782,6 +800,7 @@ function render() {
     ? t("count.choose")
     : state.view === "upgrade" && CHANGE_GROUPS.includes(state.group) ? t("count.changes", { label: UPGRADE_GROUPS[state.group].label, count: formatNumber(rows.length) })
       : countText(rows.length);
+  renderOtherBranches(counts);
   $("results").innerHTML = rows.slice(0, state.shown).map((row) => renderBug(row, terms)).join("");
   $("more").hidden = rows.length <= state.shown;
   $("more").textContent = t("list.more", { count: formatNumber(rows.length - state.shown) });

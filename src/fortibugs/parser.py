@@ -22,6 +22,8 @@ from .report import accounting, finding
 BUG_ID = re.compile(r"\b\d{5,7}\b")
 # A stray dash may follow the IDs: "300372 -".
 ID_CELL = re.compile(r"^\s*\d{5,7}(\s*,?\s*\d{5,7})*\s*[,-]?\s*$")
+# An ID the vendor printed broken, "205025 0" for a seven-digit ID: never guessed, left out by rule.
+MALFORMED_ID = re.compile(r"^\s*(\d{5,7})\s+\d{1,2}\s*$")
 BULLET_ID = re.compile(r"\((\d{5,7})\)")
 CVE_REFERENCE = re.compile(r"[\s(,;]*\bCVE-\d{4}-\d{4,}\b[)]?", re.I)
 VULNERABILITY_NOTICE = re.compile(r"no longer vulnerable|following CVE", re.I)
@@ -281,8 +283,12 @@ def parse_section(doc: fitz.Document, section: Section, findings: List[dict], ur
             elif left:
                 # An ID cell with more than IDs: a form the parser does not read. The end of a
                 # reference, "(duplicate of" + "378521)", lists no bug.
+                broken = MALFORMED_ID.match(cell)
                 found = re.match(r"\s*(\d{5,7})(?=\s|,|$)", cell)
-                if found:
+                if broken:
+                    findings.append(finding("left_out", "malformed_id", link(url, number), place(section.title, category),
+                                            [broken.group(1)], f"an ID printed broken by the vendor, not guessed: {cell.strip()!r}"))
+                elif found:
                     findings.append(finding("not_understood", "id_cell", link(url, number), place(section.title, category),
                                             [found.group(1)], f"an ID cell that holds more than IDs: {cell[:60]!r}"))
                 row = None

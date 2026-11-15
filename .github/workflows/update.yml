@@ -36,7 +36,7 @@ jobs:
 
       - name: Test
         run: |
-          pytest
+          pytest -m "not corpus"
           node --test tests/site/logic.test.js
 
       # The PDFs are not versioned: the cache only spares downloading them again.
@@ -60,7 +60,7 @@ jobs:
         run: fortibugs extract
 
       - name: Check the real PDFs
-        run: FORTIBUGS_CACHE=.cache/pdfs pytest tests/test_corpus.py
+        run: pytest -m corpus
 
       - name: Commit the data
         run: |

@@ -1,7 +1,7 @@
 // Run with: node --test tests/site/logic.test.js
 const assert = require("node:assert");
 const test = require("node:test");
-const { versionChanges, changesById, upgradeRows, rowText, countGroups, officialUrl, branchSupport, supportedBranches, tableText, upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, statusAt, hardwareMatch, searchTerms, matchesTerms, upgradeGroup } = require("../../site/logic.js");
+const { versionChanges, changesById, upgradeRows, rowText, countGroups, officialUrl, branchSupport, supportedBranches, tableText, upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, hardwareStatus, statusAt, hardwareMatch, searchTerms, matchesTerms, upgradeGroup } = require("../../site/logic.js");
 
 const versions = [
   { v: "7.4.1", branch: "7.4" }, { v: "7.4.2", branch: "7.4" },
@@ -253,4 +253,14 @@ test("changes by ID keep where they first appeared, once per chapter and text", 
     { v: "8.0.1", changes: [["defaults", "1248524", "MTU", 20], ["cli", "1248524", "Other", 15]] },
   ]).get("1248524");
   assert.deepEqual(list.map((change) => [change.chapter, change.entry.v, change.page]), [["defaults", "8.0.0", 23], ["cli", "8.0.1", 15]]);
+});
+
+test("a model the latest notes no longer list is no longer maintained", () => {
+  const gone = { model: "FG-60E", branch: "7.4", eol: [] };
+  assert.equal(hardwareStatus(gone, "7.6", "2026-11-15").key, "stopped");
+  assert.equal(hardwareStatus(gone, "7.6", "2026-11-15").groups[0].lastSoftware, "7.4");
+  assert.equal(hardwareStatus({ model: "FG-60F", branch: "7.6", eol: [] }, "7.6", "2026-11-15").key, "none");
+  const announced = { model: "FG-60F", branch: "7.6", eol: [[["FG-60F"], null, null, "2030-01-31", "p"]] };
+  assert.equal(hardwareStatus(announced, "7.6", "2026-11-15").key, "announced");
+  assert.equal(hardwareStatus({ ...announced, eol: [[["FG-60F"], null, null, "2025-01-31", "p"]] }, "7.6", "2026-11-15").key, "stopped");
 });

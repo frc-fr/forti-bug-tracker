@@ -1,7 +1,7 @@
 :root {
   color-scheme: light;
   --bg: #e9edf3; --panel: #fff; --text: #111827; --muted: #4a5464; --line: #c3cbd8; --accent: #3f4b5e; --link: #1d4f91;
-  --brand: #da291c;
+  --brand: #da291c; --brand-text: #b8211a;
   --shadow: 0 1px 3px rgb(17 24 39 / .1);
   --affected: #8d1b13; --affected-bg: #fad9d5;
   --fixed: #0e5730; --fixed-bg: #cdeed9;
@@ -13,7 +13,7 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #1a1f27; --panel: #252b35; --text: #e6e9ef; --muted: #b3bcc9; --line: #454f5e; --accent: #c6cdd8; --link: #a3c6ef;
-  --brand: #da291c;
+  --brand: #da291c; --brand-text: #f0675d;
   --shadow: 0 1px 3px rgb(0 0 0 / .3);
   --affected: #ffc2bb; --affected-bg: #5a211c;
   --fixed: #a0ecc0; --fixed-bg: #17472f;
@@ -24,14 +24,15 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-.wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 0 20px; }
 .muted { color: var(--muted); }
 .top { background: var(--panel); border-top: 4px solid var(--brand); border-bottom: 1px solid var(--line); padding: 14px 0 14px; margin-bottom: 18px; }
-.brand { color: var(--brand); }
+.brand { color: var(--brand-text); }
 h1 { margin: 0; font-size: 22px; letter-spacing: -.01em; }
 .top p { margin: 2px 0 0; }
 .top-row { display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: start; }
 .top-meta { grid-column: 1 / -1; font-size: 13px; display: flex; flex-wrap: wrap; gap: 0 20px; }
+.top-meta p { white-space: nowrap; }
 .privacy { font-size: 14px; font-weight: 600; }
 .top-actions { flex: none; display: flex; gap: 8px; }
 .theme { flex: none; font: inherit; font-size: 13px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); cursor: pointer; }
@@ -118,7 +119,7 @@ details.notice p { margin: 6px 0 2px; }
 .summary:empty { display: none; }
 .summary-card { --tone: var(--text); display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; font: inherit; font-size: 13px; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
 .summary-card::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--tone); }
-.summary-card.affected { --tone: var(--brand); }
+.summary-card.affected { --tone: var(--affected); }
 .summary-card.potential { --tone: var(--potential); }
 .summary-card.fixed { --tone: var(--fixed); }
 .summary-card.change { --tone: var(--change); }
@@ -138,6 +139,11 @@ details.notice p { margin: 6px 0 2px; }
 .hardware-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .hardware-table th, .hardware-table td { padding: 8px 14px; text-align: left; border-top: 1px solid var(--line); }
 .hardware-table thead th { border-top: 0; font-size: 13px; font-weight: 600; color: var(--text); background: var(--bg); }
+.hardware-table tbody th, .hardware-table td:nth-child(2), .hardware-table td:nth-child(3) { white-space: nowrap; }
+.hardware-group { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+.hardware-table .hardware-group { display: flex; }
+.hardware-table .hardware-group + .hardware-group { margin-top: 4px; }
+.hardware-variants { font-size: 12px; color: var(--muted); }
 .legal { padding-bottom: 32px; }
 .legal h2 { margin: 0 0 8px; font-size: 20px; }
 .legal h3 { margin: 18px 0 4px; font-size: 15px; }
@@ -186,6 +192,7 @@ details.notice p { margin: 6px 0 2px; }
 .more[hidden] { display: none; }
 
 @media (max-width: 620px) {
+  .top-meta p { white-space: normal; }
   #notices p, #upgrade-notices p, .bug-text, .bug-detail p, .bug-detail dd, .view-help, footer p, .hardware-note, .legend p, .legend dd, .legal p, .news li { text-align: left; }
   .top-row { grid-template-columns: 1fr; }
   .top-actions { grid-row: 1; justify-self: end; }

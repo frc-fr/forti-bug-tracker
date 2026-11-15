@@ -1,43 +1,67 @@
 # forti-bug-tracker
 
-Site statique de suivi des bugs FortiOS et de leurs corrections, construit à partir de la
-documentation publique de Fortinet.
+Site statique de suivi des bugs FortiOS et de leurs corrections, construit à partir des Release Notes
+publiques de Fortinet.
 
 Site : https://frc-fr.github.io/forti-bug-tracker/
 
-Ce projet est indépendant. Il n'est pas affilié à Fortinet. Les
-informations sont fournies à titre indicatif : vérifiez toujours la documentation officielle.
+Ce projet est indépendant. Il n'est pas affilié à Fortinet.
+Les informations sont fournies à titre indicatif : vérifiez toujours la documentation officielle.
 
 ## Fonctionnalités
 
 - Recherche par numéro de bug ou mots-clés, par version et par matériel
 - Mise en avant des branches supportées, sans masquer les autres
-- Comparaison de deux versions, avec les chapitres à lire avant la mise à niveau
-- Informations par modèle, dont la version recommandée
+- Comparaison de deux versions : bugs corrigés, nouveaux problèmes ouverts, problèmes toujours présents,
+  changements de la CLI et de l'interface, et chapitres à lire avant la mise à niveau
+- Onglet Matériel : versions dont les notes listent chaque modèle, statut, version recommandée et fin de
+  support selon Fortinet
 - Suivi des nouveautés, avec un flux RSS/Atom
 - Interface en français et en anglais
 
-Vos recherches et vos filtres restent dans votre navigateur : ils ne sont ni enregistrés ni
-transmis. Ce projet s'inspire de l'[Upgrade Path Tool](https://docs.fortinet.com/upgrade-tool/) de Fortinet.
+Vos recherches et vos filtres restent dans votre navigateur : ils ne sont ni enregistrés ni transmis.
+Ce projet s'inspire de l'[Upgrade Path Tool](https://docs.fortinet.com/upgrade-tool/) de Fortinet.
 
-## Mise à jour automatique
+## Ce que disent les notes, et ce qu'elles ne disent pas
 
-Un traitement GitHub Actions s'exécute plusieurs fois par jour en semaine. Il récupère la documentation publique,
-en extrait les données, les contrôle, puis publie le site sur GitHub Pages. Si un contrôle
-échoue, le site conserve ses dernières données valides.
+- Fortinet publie une note par version de FortiOS (7.6.4), avec ses problèmes résolus (« Resolved
+  Issues ») et ses problèmes connus (« Known Issues »). FortiOS n'a ni hotfix ni train : une correction vaut
+  pour les versions suivantes de la branche.
+- Un problème connu marqué « nouveau » dans une version n'est pas situé avant elle : son statut y est
+  « Inconnu ».
+- Chaque note liste les modèles qu'elle supporte : c'est la source des versions de l'onglet Matériel.
+- Les notes ne rangent pas les bugs par modèle. Un modèle n'est connu que lorsque le texte le cite. Le
+  filtre matériel est donc inclusif : avec un modèle choisi, il garde les bugs qui le citent, ceux qui ne
+  citent que sa famille et ceux qui ne citent aucun matériel.
+- Les avis de sécurité sont écartés et les références CVE retirées des descriptions.
 
-Le traitement tourne du lundi au vendredi à 9 h 15, 14 h 15 et 19 h 00, heure de Paris. Pour
-limiter les requêtes, tous les documents ne sont pas vérifiés à chaque passage :
+## Sources
 
-- Une branche FortiOS est active si l'un de ses documents a été révisé dans les 90 derniers
-  jours. Tous ses documents sont alors vérifiés à chaque passage, quel que soit leur âge.
-- Les branches dormantes ne sont vérifiées que le lundi, ou lors d'un lancement manuel qui le demande.
-- Les nouvelles versions sont détectées à chaque passage, sur toutes les branches.
-- Une branche dormante révisée redevient active d'elle-même.
+- Release Notes PDF de chaque version, trouvées depuis la page de la version sur `docs.fortinet.com`, dans
+  le respect du Crawl-delay de son robots.txt. Un PDF est suivi par une requête HEAD sur son objet de
+  stockage : son ETag indique qu'il a été régénéré. Si le PDF manque, les chapitres web (Known Issues,
+  Resolved Issues) sont lus à la place. Deux secondes au moins séparent deux requêtes.
+- Pour limiter les requêtes, une branche est active si l'un de ses documents a été révisé dans les 90
+  derniers jours : tous ses documents sont alors vérifiés à chaque passage. Les branches dormantes ne sont
+  vérifiées que le lundi, ou lors d'un lancement manuel qui le demande (`collect --all`). Les nouvelles
+  versions sont cherchées à chaque passage, sur toutes les branches.
+- Dates de support des branches : [API endoflife.date](https://endoflife.date/fortios), une source
+  communautaire, car Fortinet ne publie ses dates que sur un portail avec compte. Elles sont lues pendant
+  la collecte, jamais par votre navigateur ; si l'API ne répond pas, les dernières dates sont gardées.
+- Version recommandée par modèle : article
+  [Recommended release for FortiOS](https://community.fortinet.com/fortigate-3/recommended-release-for-fortios-116639)
+  de la communauté Fortinet, revu chaque trimestre. Résultat dans `sources/recommended.json`.
+- Annotations ajoutées à la main (`sources/annotations.json`) : special build, article de la communauté,
+  toujours avec leur lien.
+- Le résultat de l'extraction est commité dans `data/` : vider le cache de la CI ne relance pas le
+  téléchargement de tous les PDF.
 
-Les dates de support des branches viennent de l'[API endoflife.date](https://endoflife.date/fortios),
-une source communautaire. Elles sont récupérées pendant ce traitement et votre navigateur ne
-contacte pas ce service.
+## Mise à jour
+
+Un traitement GitHub Actions s'exécute du lundi au vendredi à 9 h 15, 14 h 15 et 19 h 00, heure de
+Paris, et sur lancement manuel. Cet horaire est décrit dans `sources/schedule.yml`, que le site lit pour
+l'afficher. Il collecte, extrait, contrôle, puis publie le site sur GitHub Pages. Si un contrôle échoue, le
+site garde ses dernières données valides.
 
 ## Liens utiles chez Fortinet
 
@@ -60,19 +84,21 @@ python3 -m venv .venv
 node --test tests/site/logic.test.js
 ```
 
-Pour prévisualiser le site :
+Pour récupérer les documents puis prévisualiser le site :
 
 ```sh
-.venv/bin/fortibugs --base-url http://localhost:8000/ build
-python3 -m http.server 8000 --directory dist
+.venv/bin/fortibugs collect
+.venv/bin/fortibugs extract
+.venv/bin/fortibugs --base-url http://localhost:8050/ build
+python3 -m http.server 8050 --directory dist
 ```
 
 ## Licence
 
 Le code est distribué sous licence [GNU AGPL 3.0 ou ultérieure](LICENSE).
 
-Cette licence ne couvre pas les contenus de tiers, notamment les textes issus de la
-documentation Fortinet. Fortinet, FortiGate et FortiOS sont des marques de Fortinet, Inc.
+Cette licence ne couvre pas les contenus de tiers, notamment les textes issus de la documentation
+Fortinet. Fortinet, FortiGate et FortiOS sont des marques de Fortinet, Inc.
 
 ## Contact
 

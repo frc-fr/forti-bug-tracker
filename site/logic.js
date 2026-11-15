@@ -90,6 +90,29 @@ function modelLifecycles(models, versions) {
 }
 
 /** Releases recommended for the models still under engineering support, the most common first. */
+/**
+ * What Fortinet says of a model's end of life, as groups of variants, in the shape the
+ * other trackers use. An announcement gives the end of support; the Release Notes give
+ * the last branch that lists the model. A group is "stopped" when that branch comes
+ * before the latest one, "ended" when its support is over. The model is "stopped" as
+ * soon as one of its groups is, or "announced" when it only has announcements, or "none".
+ */
+function hardwareStatus(entry, latestBranch, today) {
+  const groups = entry.eol.map(([variants, bulletin, lastSoftware, endOfSupport, page]) => ({ variants, bulletin, lastSoftware, endOfSupport, page }));
+  // The notes of the latest branch no longer list the model: its last branch is where it stopped.
+  if (entry.branch && compareBranches(entry.branch, latestBranch) < 0) {
+    const silent = groups.filter((group) => !group.lastSoftware);
+    for (const group of silent) group.lastSoftware = entry.branch;
+    if (!silent.length) groups.push({ variants: [entry.model], bulletin: null, lastSoftware: entry.branch, endOfSupport: null, page: null });
+  }
+  for (const group of groups) {
+    group.stopped = Boolean(group.lastSoftware) && compareBranches(group.lastSoftware, latestBranch) < 0;
+    group.ended = Boolean(group.endOfSupport) && group.endOfSupport < today;
+  }
+  const key = groups.some((group) => group.stopped || group.ended) ? "stopped" : groups.length ? "announced" : "none";
+  return { key, groups };
+}
+
 function currentRecommendations(recommended) {
   const counts = new Map();
   for (const { release, ended } of Object.values(recommended)) {
@@ -200,5 +223,5 @@ function tableText(rows) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { versionChanges, changesById, upgradeRows, rowText, countGroups, officialUrl, branchSupport, supportedBranches, tableText, upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, statusAt, modelFamily, hardwareMatch, searchTerms, matchesTerms, upgradeGroup };
+  module.exports = { versionChanges, changesById, upgradeRows, rowText, countGroups, officialUrl, branchSupport, supportedBranches, tableText, upgradeNotices, versionNotes, currentRecommendations, modelLifecycles, hardwareStatus, statusAt, modelFamily, hardwareMatch, searchTerms, matchesTerms, upgradeGroup };
 }

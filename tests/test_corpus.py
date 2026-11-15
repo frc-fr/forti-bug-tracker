@@ -1,4 +1,4 @@
-"""Checks on the real PDFs, when FORTIBUGS_CACHE points to the downloaded corpus."""
+"""Checks on the real PDFs of .cache/pdfs, or of FORTIBUGS_CACHE when set."""
 import json
 import os
 import re
@@ -8,12 +8,12 @@ import pytest
 
 from fortibugs.parser import parse_pdf
 
-CACHE = os.environ.get("FORTIBUGS_CACHE")
-PDFS = sorted(Path(CACHE).glob("*.pdf")) if CACHE else []
+CACHE = Path(os.environ.get("FORTIBUGS_CACHE", ".cache/pdfs"))
+PDFS = sorted(CACHE.glob("*.pdf"))
 
 pytestmark = [
     pytest.mark.corpus,
-    pytest.mark.skipif(not PDFS, reason="FORTIBUGS_CACHE not set"),
+    pytest.mark.skipif(not PDFS, reason="no downloaded PDF"),
 ]
 
 

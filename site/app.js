@@ -25,6 +25,13 @@ const UPGRADE_GROUPS = {
   table: { label: t("group.table"), tone: "change" },
 };
 const CHANGE_GROUPS = ["defaults", "cli", "gui", "table"];
+const HARDWARE_STATES = {
+  all: { label: t("hardware.all"), tone: "all" },
+  none: { label: t("hardware.noEnd"), tone: "fixed" },
+  announced: { label: t("hardware.announced"), tone: "change" },
+  stopped: { label: t("hardware.stopped"), tone: "potential" },
+};
+const FAMILIES = [["FG", "FortiGate"], ["FWF", "FortiWiFi"], ["FGR", "FortiGate Rugged"], ["FFW", "FortiFirewall"], ["FOS", "FortiOS VM"]];
 
 const $ = (id) => document.getElementById(id);
 const defaultFilters = () => ({
@@ -40,6 +47,7 @@ let changes = [];
 // The changes announced under each ID, for the bugs sharing it.
 let changesOf = new Map();
 let lifecycles = [];
+let latestBranch = "";
 let recommended = { models: {} };
 let lifecycle = { source: null, branches: {} };
 let annotations = {};
@@ -521,23 +529,21 @@ function renderUpgradeNotices() {
     <p class="muted">${t("reading.help", { branch: escapeHtml(versions[to].branch) })}</p><div class="reading-chapters">${chapters}</div>${repeated}</details>`;
 }
 
+/** What Fortinet says of the selected model, above the bugs. */
 function renderRecommendation() {
-  const entry = recommended.models[state.model];
-  if (!entry) {
+  const row = hardwareRows().find((candidate) => candidate.model === state.model);
+  const advice = recommended.models[state.model];
+  if (!row || (row.status.key === "none" && !advice)) {
     $("recommendation").innerHTML = "";
     return;
   }
-  const parts = [t("advice.main", { model: escapeHtml(state.model), release: escapeHtml(entry.release) })];
-  if (state.version !== entry.release) {
-    const params = stateParams();
-    params.set("version", entry.release);
-    parts.push(`<a href="#${escapeHtml(params.toString())}">${t("advice.view")}</a>`);
-  }
-  if (entry.ended) parts.push(t("advice.ended"));
-  parts.push(`<a href="${escapeHtml(recommended.source)}" target="_blank" rel="noopener">${t("advice.source", { month: formatMonth(recommended.as_of) })}</a>`);
+  const parts = [t("advice.model", { model: escapeHtml(state.model) }), statusCell(row)];
+  if (advice) parts.push(`${t("advice.recommended")} ${releaseCell(row)}`);
+  const support = supportCell(row);
+  if (support !== "—") parts.push(support);
+  if (advice) parts.push(`<a href="${escapeHtml(recommended.source)}" target="_blank" rel="noopener">${t("advice.source", { month: formatMonth(recommended.as_of) })}</a>`);
   $("recommendation").innerHTML = parts.map((part) => `<span>${part}</span>`).join("");
 }
-
 /** Versions holding the most recent value of a date field, newest version first. */
 function latestBy(field) {
   const dated = versions.filter((entry) => entry[field]);
@@ -574,19 +580,100 @@ function bugTable(rows) {
   })];
 }
 
-function hardwareTable(entries) {
-  const header = ["model", "first", "last", "status", "release", "support"].map((key) => t(`hardware.${key}`));
-  return [header, ...entries.map((entry) => {
-    const advice = recommended.models[entry.model];
-    return [
-      entry.model, entry.first, entry.last,
-      entry.current ? t("hardware.current") : t("hardware.stoppedAfter", { branch: entry.branch }),
-      advice ? advice.release : "",
-      advice ? t(advice.ended ? "hardware.ended" : "hardware.ongoing") : "",
-    ];
-  })];
+/** "FG-60F, FWF-60F : " before a fact on part of a model, nothing when it covers the model itself. */
+function variantPrefix(variants, model) {
+  return variants.length === 1 && variants[0] === model ? "" : `${variants.join(", ")} : `;
 }
 
+function familyName(model) {
+  const family = FAMILIES.find(([prefix]) => model.startsWith(`${prefix}-`));
+  return family ? family[1] : "";
+}
+
+/** The hardware rows: the models the notes list, what the notes and Fortinet say of them. */
+function hardwareRows() {
+  const today = new Date().toISOString().slice(0, 10);
+  return lifecycles.map((lifecycle) => ({
+    model: lifecycle.model, lifecycle, family: familyName(lifecycle.model),
+    status: hardwareStatus({ model: lifecycle.model, branch: lifecycle.branch, eol: [] }, latestBranch, today),
+  }));
+}
+
+function statusLabel(group) {
+  const text = group.stopped ? t("hardware.stoppedAfter", { branch: group.lastSoftware })
+    : group.lastSoftware ? t("hardware.lastBranch", { branch: group.lastSoftware })
+      : group.ended ? t("hardware.supportEnded") : t("hardware.announced");
+  return text;
+}
+
+function statusText(group, model) {
+  return `${variantPrefix(group.variants, model)}${statusLabel(group)}`;
+}
+
+function supportLabel(group) {
+  return t(group.ended ? "hardware.endedOn" : "hardware.until", { date: formatDate(group.endOfSupport) });
+}
+
+function supportText(group, model) {
+  return group.endOfSupport ? `${variantPrefix(group.variants, model)}${supportLabel(group)}` : "";
+}
+
+/** A group's variants beside its badge: three at most, all of them in the tooltip (a bulletin can name dozens). */
+function variantsHtml(variants, model) {
+  if (variants.length === 1 && variants[0] === model) return "";
+  const more = variants.length > 3 ? ` ${t("hardware.moreVariants", { count: variants.length - 3 })}` : "";
+  return ` <span class="hardware-variants" title="${escapeHtml(variants.join(", "))}">${escapeHtml(variants.slice(0, 3).join(", "))}${more}</span>`;
+}
+
+function groupHtml(badge, group, model) {
+  return `<span class="hardware-group">${badge}${variantsHtml(group.variants, model)}</span>`;
+}
+
+function statusCell({ model, status }) {
+  if (status.key === "none") return `<span class="badge fixed">${t("hardware.noEnd")}</span>`;
+  return status.groups.map((group) => {
+    const tone = group.stopped || group.ended ? "potential" : "change";
+    const text = escapeHtml(statusLabel(group));
+    return groupHtml(group.page
+      ? `<a class="badge ${tone}" href="${escapeHtml(group.page)}" target="_blank" rel="noopener">${text}</a>`
+      : `<span class="badge ${tone}">${text}</span>`, group, model);
+  }).join(" ");
+}
+
+function supportCell({ model, status }) {
+  const parts = status.groups.filter((group) => group.endOfSupport).map((group) => {
+    const tone = group.ended ? "potential" : "fixed";
+    return groupHtml(`<span class="badge ${tone}">${escapeHtml(supportLabel(group))}</span>`, group, model);
+  });
+  return parts.length ? parts.join(" ") : "—";
+}
+
+/** The release Fortinet recommends, and whether its engineering support is over. */
+function releaseText(model) {
+  const advice = recommended.models[model];
+  if (!advice) return "";
+  return advice.ended ? `${advice.release} (${t("hardware.engineeringEnded")})` : advice.release;
+}
+
+function releaseCell({ model }) {
+  const advice = recommended.models[model];
+  if (!advice) return "—";
+  const link = `<a href="#${escapeHtml(new URLSearchParams({ version: advice.release, model }).toString())}">${escapeHtml(advice.release)}</a>`;
+  return advice.ended ? `${link} <span class="muted">(${t("hardware.engineeringEnded")})</span>` : link;
+}
+
+const HARDWARE_COLUMNS = ["model", "first", "last", "status", "release", "support"];
+
+function hardwareTable(rows) {
+  return [HARDWARE_COLUMNS.map((key) => t(`hardware.${key}`)), ...rows.map((row) => [
+    row.model,
+    row.lifecycle.first,
+    row.lifecycle.last,
+    row.status.key === "none" ? t("hardware.noEnd") : row.status.groups.map((group) => statusText(group, row.model)).join(" ; "),
+    releaseText(row.model),
+    row.status.groups.map((group) => supportText(group, row.model)).filter(Boolean).join(" ; "),
+  ])];
+}
 /** The Clipboard API needs HTTPS: a local preview over HTTP falls back on the old command. */
 async function copyText(text) {
   if (navigator.clipboard) {
@@ -603,43 +690,22 @@ async function copyText(text) {
 
 function renderHardware() {
   const terms = searchTerms($("hardware-query").value);
-  const matching = lifecycles.filter(({ model }) => terms.every((term) => model.toLowerCase().includes(term)));
-  const counts = {
-    all: matching.length,
-    current: matching.filter((entry) => entry.current).length,
-    stopped: matching.filter((entry) => !entry.current).length,
-  };
-  const labels = {
-    all: [t("hardware.all"), "all"],
-    current: [t("hardware.current"), "fixed"],
-    stopped: [t("hardware.stopped"), "potential"],
-  };
-  $("chips").innerHTML = Object.entries(labels)
-    .map(([key, [label, tone]]) => tile("hardware", key, label, tone, counts[key], state.hardware === key)).join("");
-
+  const matching = hardwareRows().filter(({ model, family }) => terms.every((term) => `${model} ${family}`.toLowerCase().includes(term)));
+  const counts = { all: matching.length };
+  for (const row of matching) counts[row.status.key] = (counts[row.status.key] || 0) + 1;
+  $("chips").innerHTML = Object.entries(HARDWARE_STATES)
+    .map(([key, { label, tone }]) => tile("hardware", key, label, tone, counts[key], state.hardware === key)).join("");
   const listed = matching
-    .filter((entry) => state.hardware === "all" || entry.current === (state.hardware === "current"))
+    .filter((row) => state.hardware === "all" || row.status.key === state.hardware)
     .sort((a, b) => a.model.localeCompare(b.model, "fr", { numeric: true }));
   copiedTable = () => hardwareTable(listed);
   $("copy").hidden = !listed.length;
   $("copy").textContent = t("list.copy");
-  const rows = listed
-    .map((entry) => {
-      const badge = entry.current
-        ? `<span class="badge fixed">${t("hardware.current")}</span>`
-        : `<span class="badge potential">${t("hardware.stoppedAfter", { branch: escapeHtml(entry.branch) })}</span>`;
-      const advice = recommended.models[entry.model];
-      const support = !advice ? "—" : advice.ended
-        ? `<span class="badge potential">${t("hardware.ended")}</span>`
-        : `<span class="badge fixed">${t("hardware.ongoing")}</span>`;
-      const release = advice
-        ? `<a href="#${new URLSearchParams({ version: advice.release, model: entry.model })}">${escapeHtml(advice.release)}</a>`
-        : "—";
-      return `<tr><th scope="row"><a href="#model=${escapeHtml(entry.model)}">${escapeHtml(entry.model)}</a></th>
-        <td>${escapeHtml(entry.first)}</td><td>${escapeHtml(entry.last)}</td><td>${badge}</td><td>${release}</td><td>${support}</td></tr>`;
-    });
+  const rows = listed.map((row) => `<tr><th scope="row"><a href="#model=${escapeHtml(row.model)}">${escapeHtml(row.model)}</a></th>
+      <td>${escapeHtml(row.lifecycle.first)}</td><td>${escapeHtml(row.lifecycle.last)}</td>
+      <td>${statusCell(row)}</td><td>${releaseCell(row)}</td><td>${supportCell(row)}</td></tr>`);
   $("results").innerHTML = rows.length
-    ? `<table class="hardware-table"><thead><tr>${["model", "first", "last", "status", "release", "support"].map((key) => `<th scope="col">${t(`hardware.${key}`)}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>`
+    ? `<table class="hardware-table"><thead><tr>${HARDWARE_COLUMNS.map((key) => `<th scope="col">${t(`hardware.${key}`)}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>`
     : "";
   $("count").textContent = rows.length ? "" : t("hardware.none");
   $("more").hidden = true;
@@ -650,11 +716,10 @@ function renderHardware() {
   $("news-summary").innerHTML = "";
   writeHash();
 }
-
 function renderNews() {
   const advised = currentRecommendations(recommended.models);
   $("news-summary").innerHTML = latestCard(t("news.latestRelease"), "released")
-    + latestCard(t("news.latestPdf"), "revised")
+    + latestCard(t("news.latestNote"), "revised")
     + (advised.length ? newsCard(t("news.recommended"), formatMonth(recommended.as_of), advised) : "");
   const byId = new Map(bugs.map((bug) => [bug.id, bug]));
   const entries = changes.map((change) => {
@@ -800,8 +865,7 @@ function modelLabel(model) {
 }
 
 function modelOptions() {
-  const families = [["FG", "FortiGate"], ["FWF", "FortiWiFi"], ["FGR", "FortiGate Rugged"], ["FFW", "FortiFirewall"], ["FOS", "FortiOS VM"]];
-  const options = families.flatMap(([prefix, group]) => models
+  const options = FAMILIES.flatMap(([prefix, group]) => models
     .filter((model) => model.startsWith(`${prefix}-`))
     .sort((a, b) => a.localeCompare(b, "fr", { numeric: true }))
     .map((model) => ({ value: model, label: modelLabel(model), group })));
@@ -911,6 +975,7 @@ async function start() {
   changesOf = changesById(versions);
   bugs = data.bugs.map(hydrate);
   lifecycles = modelLifecycles(models, versions);
+  latestBranch = versions.filter((entry) => entry.models.length).pop().branch;
 
   for (const key of ["version", "from", "model", "category"]) {
     combos[key] = new Combobox($(key), (value) => update({ [key]: value }));

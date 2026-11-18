@@ -190,5 +190,6 @@
   {"date": "2026-11-13", "version": "7.4.1", "kind": "known_added", "bugs": ["901621", "1082197", "1117043", "1146176"]},
   {"date": "2026-11-15", "version": "5.4.1", "kind": "fixed_added", "bugs": ["300372"]},
   {"date": "2026-11-15", "version": "7.4.8", "kind": "fixed_added", "bugs": ["1047865"]},
-  {"date": "2026-11-16", "version": "7.0.0", "kind": "fixed_added", "bugs": ["702304"]}
+  {"date": "2026-11-16", "version": "7.0.0", "kind": "fixed_added", "bugs": ["702304"]},
+  {"date": "2026-11-18", "version": "7.6.8", "kind": "known_added", "bugs": ["1355987"]}
 ]

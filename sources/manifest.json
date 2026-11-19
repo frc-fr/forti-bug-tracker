@@ -1495,10 +1495,10 @@
       "version": "7.6.7",
       "branch": "7.6",
       "pdf_url": "https://fortinetweb.s3.amazonaws.com/docs.fortinet.com/v2/attachments/7f08d223-5ac6-11f1-a33a-02356ffb40d9/fortios-v7.6.7-release-notes.pdf",
-      "etag": "b6a4f1b8b997bbe5852347fa31ce84ff",
-      "last_modified": "Tue, 10 Nov 2026 23:00:20 GMT",
-      "size": 1196536,
-      "sha256": "be24adcc4c66fb11b6f9c0bdf439f61d5ddb0cd9009d4aeafdb74ab829b8797a"
+      "etag": "b3084290b193f8800c91469c1dbebc70",
+      "last_modified": "Thu, 19 Nov 2026 14:36:05 GMT",
+      "size": 1196400,
+      "sha256": "8a968a0dda0fb6f24836d6cdb248318bd1fa270529a58b0c2294882f7e51e681"
     },
     {
       "version": "7.6.8",
